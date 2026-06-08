@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from amazon_review_pipeline.commands import command_fetch, command_load, command_parse, command_run, command_validate
+from amazon_review_pipeline.commands import command_export, command_fetch, command_load, command_parse, command_run, command_validate
 from amazon_review_pipeline.config import DEFAULT_DB_PATH, DEFAULT_PARSED_ROOT, DEFAULT_RAW_ROOT, DEFAULT_TARGETS
 
 
@@ -45,6 +45,13 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--run-id")
     validate.add_argument("--output", type=Path)
     validate.set_defaults(func=command_validate)
+
+    export = subparsers.add_parser("export", help="Export loaded reviews from SQLite to CSV or JSONL.")
+    export.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    export.add_argument("--format", choices=("csv", "jsonl"), default="csv")
+    export.add_argument("--output", type=Path, required=True)
+    export.add_argument("--run-id")
+    export.set_defaults(func=command_export)
 
     return parser
 

@@ -16,6 +16,7 @@ env/
 data/raw/
 data/parsed/
 data/discovery/
+data/exports/
 data/*.sqlite
 data/*.sqlite-*
 

@@ -1,7 +1,8 @@
+import csv
 import json
 import sqlite3
 
-from amazon_review_pipeline.database import initialize_database, load_pipeline_run, stable_review_key, validate_database
+from amazon_review_pipeline.database import export_reviews, initialize_database, load_pipeline_run, stable_review_key, validate_database
 
 
 def write_jsonl(path, rows):
@@ -202,6 +203,82 @@ def test_load_pipeline_run_can_parse_raw_html_without_jsonl(tmp_path):
     assert summary["reviews_inserted"] == 1
     assert report["counts"]["reviews"] == 1
     assert report["rating_distribution"] == {"5.0": 1}
+
+
+def test_export_reviews_writes_csv_and_jsonl(tmp_path):
+    db_path = tmp_path / "reviews.sqlite"
+    raw_dir = tmp_path / "raw" / "run-export"
+    parsed_dir = tmp_path / "parsed" / "run-export"
+    raw_dir.mkdir(parents=True)
+    parsed_dir.mkdir(parents=True)
+    write_jsonl(
+        raw_dir / "fetch_metadata.jsonl",
+        [
+            {
+                "run_id": "run-export",
+                "target_id": "amzn_export",
+                "asin": "B0EXPORT01",
+                "requested_url": "https://www.amazon.com/dp/B0EXPORT01/",
+                "final_url": "https://www.amazon.com/dp/B0EXPORT01/",
+                "status": "fetched",
+                "status_code": 200,
+                "fetched_at": "2026-06-08T19:39:01+00:00",
+                "html_path": "target.html",
+                "content_hash": "abc",
+                "blocked_or_signin": False,
+                "response_bytes": 123,
+                "page_title": "Amazon product",
+                "product_title": "Export Product",
+                "error_message": None,
+            }
+        ],
+    )
+    write_jsonl(
+        parsed_dir / "reviews.jsonl",
+        [
+            {
+                "target_id": "amzn_export",
+                "review_id": "R-EXPORT",
+                "asin": "B0EXPORT01",
+                "reviewer_name": "Alice",
+                "rating": 5.0,
+                "title": "Exportable",
+                "review_date": "Reviewed in Canada on May 2, 2026",
+                "variation": "Size: One Pack",
+                "verified_purchase": True,
+                "helpful_votes": 1,
+                "body": "Ready for analysis.",
+                "source_url": "https://www.amazon.com/dp/B0EXPORT01/",
+            }
+        ],
+    )
+    (parsed_dir / "parse_report.json").write_text(
+        json.dumps(
+            {
+                "target_count": 1,
+                "review_count": 1,
+                "targets": [{"target_id": "amzn_export", "review_count": 1, "non_empty_bodies": 1}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    load_pipeline_run(db_path, parsed_dir, raw_dir)
+
+    csv_path = tmp_path / "exports" / "reviews.csv"
+    jsonl_path = tmp_path / "exports" / "reviews.jsonl"
+    csv_summary = export_reviews(db_path, csv_path, "csv", run_id="run-export")
+    jsonl_summary = export_reviews(db_path, jsonl_path, "jsonl")
+
+    assert csv_summary["review_count"] == 1
+    assert jsonl_summary["review_count"] == 1
+    with csv_path.open("r", newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    jsonl_rows = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()]
+    assert rows[0]["review_id"] == "R-EXPORT"
+    assert rows[0]["product_name"] == "Export Product"
+    assert rows[0]["verified_purchase"] == "True"
+    assert jsonl_rows[0]["body"] == "Ready for analysis."
+    assert jsonl_rows[0]["helpful_votes"] == 1
 
 
 def test_stable_review_key_prefers_review_id_and_hashes_fallback():

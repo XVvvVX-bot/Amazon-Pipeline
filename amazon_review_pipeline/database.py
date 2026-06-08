@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import re
 import sqlite3
@@ -100,6 +101,28 @@ CREATE TABLE IF NOT EXISTS parse_errors (
     FOREIGN KEY (run_id) REFERENCES ingestion_runs(run_id)
 );
 """
+
+EXPORT_COLUMNS = (
+    "review_key",
+    "review_id",
+    "run_id",
+    "target_id",
+    "asin",
+    "product_name",
+    "category",
+    "reviewer_name",
+    "rating",
+    "title",
+    "review_date",
+    "review_date_iso",
+    "variation",
+    "verified_purchase",
+    "helpful_votes",
+    "body",
+    "source_url",
+    "collected_at",
+    "content_hash",
+)
 
 
 def connect_database(path: Path) -> sqlite3.Connection:
@@ -281,6 +304,85 @@ def validate_database(db_path: Path, run_id: str | None = None) -> dict:
             "targets": target_review_counts(connection, run_id),
             "parse_errors": parse_errors(connection, run_id),
         }
+
+
+def export_reviews(db_path: Path, output_path: Path, output_format: str, run_id: str | None = None) -> dict:
+    output_format = output_format.lower()
+    if output_format not in {"csv", "jsonl"}:
+        raise ValueError("Export format must be 'csv' or 'jsonl'")
+
+    with connect_database(db_path) as connection:
+        initialize_database(connection)
+        rows = export_review_rows(connection, run_id)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_format == "csv":
+        write_export_csv(output_path, rows)
+    else:
+        write_export_jsonl(output_path, rows)
+
+    return {
+        "db_path": str(db_path),
+        "output_path": str(output_path),
+        "format": output_format,
+        "run_id": run_id,
+        "review_count": len(rows),
+    }
+
+
+def export_review_rows(connection: sqlite3.Connection, run_id: str | None = None) -> list[dict]:
+    where, params = run_scope(run_id, table_alias="r")
+    rows = connection.execute(
+        f"""
+        SELECT
+            r.review_key,
+            r.review_id,
+            r.run_id,
+            r.target_id,
+            r.asin,
+            p.product_name,
+            p.category,
+            r.reviewer_name,
+            r.rating,
+            r.title,
+            r.review_date,
+            r.review_date_iso,
+            r.variation,
+            r.verified_purchase,
+            r.helpful_votes,
+            r.body,
+            r.source_url,
+            r.collected_at,
+            r.content_hash
+        FROM reviews r
+        LEFT JOIN products p
+            ON r.target_id = p.target_id
+        {where}
+        ORDER BY r.target_id, r.review_date_iso, r.review_key
+        """,
+        params,
+    ).fetchall()
+    return [normalize_export_row(dict(row)) for row in rows]
+
+
+def normalize_export_row(row: dict) -> dict:
+    row["verified_purchase"] = bool(row["verified_purchase"])
+    row["helpful_votes"] = int(row["helpful_votes"] or 0)
+    return row
+
+
+def write_export_csv(path: Path, rows: list[dict]) -> None:
+    fieldnames = list(EXPORT_COLUMNS)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_export_jsonl(path: Path, rows: list[dict]) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 def upsert_run(

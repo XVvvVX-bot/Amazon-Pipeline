@@ -98,6 +98,19 @@ Validate the loaded database:
 python amazon_pipeline.py validate --db data/reviews.sqlite --run-id 20260608T193901Z_4a170c --output data/parsed/20260608T193901Z_4a170c/validation_report.json
 ```
 
+Export loaded reviews for downstream analysis:
+
+```powershell
+python amazon_pipeline.py export --db data/reviews.sqlite --format csv --output data/exports/reviews.csv
+python amazon_pipeline.py export --db data/reviews.sqlite --format jsonl --output data/exports/reviews.jsonl
+```
+
+Export only one loaded run:
+
+```powershell
+python amazon_pipeline.py export --db data/reviews.sqlite --run-id 20260608T223058Z_2aaa75 --format csv --output data/exports/reviews_20260608T223058Z_2aaa75.csv
+```
+
 Outputs:
 
 - Raw HTML: `data/raw/{run_id}/{target_id}.html`
@@ -107,6 +120,7 @@ Outputs:
 - Parse report: `data/parsed/{run_id}/parse_report.json`
 - SQLite database: `data/reviews.sqlite`
 - Validation report: `data/parsed/{run_id}/validation_report.json`
+- Review exports: `data/exports/*.csv` or `data/exports/*.jsonl`
 - Discovery seed pages: `data/discovery/{run_id}/seed_pages.jsonl`
 - Discovery products: `data/discovery/{run_id}/bestseller_products.jsonl`
 - Discovery report: `data/discovery/{run_id}/discovery_report.json`
@@ -114,3 +128,50 @@ Outputs:
 The script does not log in, solve CAPTCHA, use proxies, rotate identities, or bypass access controls. If Amazon returns a sign-in or robot-check page, the response is still saved for inspection and the metadata marks it as `blocked_or_signin`.
 
 `amazon_bestsellers.py` starts from the public Best Sellers root page, discovers one level of category Best Sellers pages, and writes target IDs as `amzn_{asin}` so duplicate product names from different sellers do not collide. Use `--max-seed-pages`, `--max-products-per-page`, and `--delay` to keep discovery bounded.
+
+## SQLite Schema
+
+- `ingestion_runs`: one row per loaded run, keyed by `run_id`.
+- `products`: one row per product target, keyed by `target_id`.
+- `raw_pages`: one row per target fetched or reused during a run. Connects to `ingestion_runs` by `run_id` and to `products` by `target_id`.
+- `reviews`: one row per unique review, keyed by `review_key`. Connects to `ingestion_runs` by `run_id` and to `products` by `target_id`.
+- `parse_errors`: fetch or parse issues by `run_id` and `target_id`.
+
+Review identity uses Amazon `review_id` when available. If no `review_id` is present, the pipeline creates a stable content hash from review fields.
+
+## Example SQL Queries
+
+Review counts by product:
+
+```sql
+SELECT target_id, COUNT(*) AS review_count
+FROM reviews
+GROUP BY target_id
+ORDER BY review_count DESC;
+```
+
+Rating distribution:
+
+```sql
+SELECT rating, COUNT(*) AS review_count
+FROM reviews
+GROUP BY rating
+ORDER BY rating;
+```
+
+Review date coverage:
+
+```sql
+SELECT MIN(review_date_iso) AS earliest_review, MAX(review_date_iso) AS latest_review
+FROM reviews
+WHERE review_date_iso IS NOT NULL;
+```
+
+Parse issues from one run:
+
+```sql
+SELECT target_id, error_type, message
+FROM parse_errors
+WHERE run_id = '20260608T223058Z_2aaa75'
+ORDER BY target_id;
+```
