@@ -1,0 +1,116 @@
+# Amazon Top Reviews Pipeline
+
+This folder contains a staged pipeline that reads Amazon product URLs from a CSV target list, fetches raw product HTML, and extracts embedded top-review sections without filtering by review country.
+
+## Install
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+## Project Layout
+
+- `amazon_review_pipeline/config.py`: shared paths, CSV schema, request headers, and block markers.
+- `amazon_review_pipeline/models.py`: dataclasses used across the pipeline.
+- `amazon_review_pipeline/targets.py`: target CSV loading, boolean parsing, and ASIN inference.
+- `amazon_review_pipeline/fetcher.py`: product-page fetching and blocked/sign-in detection.
+- `amazon_review_pipeline/parser.py`: top-review HTML parsing and field normalization.
+- `amazon_review_pipeline/files.py`: JSONL writing, raw-run lookup, and `latest` directory handling.
+- `amazon_review_pipeline/database.py`: SQLite schema, idempotent loading, and validation reports.
+- `amazon_review_pipeline/commands.py`: fetch, parse, and run workflow orchestration.
+- `amazon_review_pipeline/cli.py`: command-line argument parsing for `amazon_pipeline.py`.
+- `amazon_review_pipeline/discovery.py`: Amazon Best Sellers discovery and target CSV merging.
+- `amazon_pipeline.py` and `amazon_bestsellers.py`: thin compatibility wrappers.
+
+## Target List
+
+Targets live in `data/targets/amazon_products.csv` with these columns:
+
+- `target_id`
+- `url`
+- `asin`
+- `product_name`
+- `category`
+- `active`
+- `notes`
+
+## Run The Staged Pipeline
+
+Discover Amazon Best Sellers category pages automatically, extract product URLs, and merge unique ASIN targets into the target list:
+
+```powershell
+python amazon_bestsellers.py --targets data/targets/amazon_products.csv
+```
+
+Run a smaller controlled discovery smoke test:
+
+```powershell
+python amazon_bestsellers.py --max-seed-pages 2 --max-products-per-page 10 --delay 0 --targets data/targets/amazon_products.csv
+```
+
+Fetch raw HTML from active targets:
+
+```powershell
+python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv
+```
+
+By default, fetch reuses a prior successful raw page for the same `target_id` instead of requesting Amazon again. To force a fresh network request:
+
+```powershell
+python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv --force
+```
+
+Forced fetches still avoid writing duplicate raw HTML when the fetched content hash already exists; metadata points to the existing raw file instead.
+
+Equivalent package-style command:
+
+```powershell
+python -m amazon_review_pipeline fetch --targets data/targets/amazon_products.csv
+```
+
+Parse saved raw HTML without another network request. By default this writes `parse_report.json` only and does not keep the intermediate review JSONL:
+
+```powershell
+python amazon_pipeline.py parse --raw-dir data/raw/latest
+```
+
+Keep the optional review JSONL staging file:
+
+```powershell
+python amazon_pipeline.py parse --raw-dir data/raw/latest --keep-jsonl
+```
+
+Fetch and parse in one command:
+
+```powershell
+python amazon_pipeline.py run --targets data/targets/amazon_products.csv
+```
+
+Load parsed reviews and raw metadata into SQLite. If `reviews.jsonl` is absent, the loader parses the saved raw HTML directly:
+
+```powershell
+python amazon_pipeline.py load --parsed-dir data/parsed/20260608T193901Z_4a170c --raw-dir data/raw/20260608T193901Z_4a170c --db data/reviews.sqlite
+```
+
+Validate the loaded database:
+
+```powershell
+python amazon_pipeline.py validate --db data/reviews.sqlite --run-id 20260608T193901Z_4a170c --output data/parsed/20260608T193901Z_4a170c/validation_report.json
+```
+
+Outputs:
+
+- Raw HTML: `data/raw/{run_id}/{target_id}.html`
+- Fetch metadata: `data/raw/{run_id}/fetch_metadata.jsonl`
+- Latest raw snapshot: `data/raw/latest/`
+- Parsed reviews JSONL, optional: `data/parsed/{run_id}/reviews.jsonl`
+- Parse report: `data/parsed/{run_id}/parse_report.json`
+- SQLite database: `data/reviews.sqlite`
+- Validation report: `data/parsed/{run_id}/validation_report.json`
+- Discovery seed pages: `data/discovery/{run_id}/seed_pages.jsonl`
+- Discovery products: `data/discovery/{run_id}/bestseller_products.jsonl`
+- Discovery report: `data/discovery/{run_id}/discovery_report.json`
+
+The script does not log in, solve CAPTCHA, use proxies, rotate identities, or bypass access controls. If Amazon returns a sign-in or robot-check page, the response is still saved for inspection and the metadata marks it as `blocked_or_signin`.
+
+`amazon_bestsellers.py` starts from the public Best Sellers root page, discovers one level of category Best Sellers pages, and writes target IDs as `amzn_{asin}` so duplicate product names from different sellers do not collide. Use `--max-seed-pages`, `--max-products-per-page`, and `--delay` to keep discovery bounded.

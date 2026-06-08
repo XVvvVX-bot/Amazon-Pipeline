@@ -1,0 +1,31 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+
+# Generated pipeline data
+data/raw/
+data/parsed/
+data/discovery/
+data/*.sqlite
+data/*.sqlite-*
+
+# Keep target-list directory trackable
+!data/
+!data/targets/
+!data/targets/amazon_products.csv
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
