@@ -24,17 +24,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: python -m pip install -r requirements.txt
-
-      - name: Install Playwright Chromium
-        run: python -m playwright install chromium
-
       - name: Add GitHub CLI to PATH
         run: |
           $ghDir = "C:\Program Files\GitHub CLI"
@@ -45,11 +34,21 @@ jobs:
       - name: Check runner prerequisites
         run: |
           python --version
+          $pythonVersion = python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+          if ($pythonVersion -ne "3.12") {
+            throw "Python 3.12 is required on the self-hosted runner. Found Python $pythonVersion."
+          }
           git --version
           if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
             throw "GitHub CLI 'gh' is required on the self-hosted runner. Install it from https://cli.github.com/ and authenticate it before running acquisition."
           }
           gh --version
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium
 
       - name: Download latest cumulative data
         env:
