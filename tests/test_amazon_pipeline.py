@@ -11,7 +11,7 @@ from amazon_review_pipeline.targets import infer_asin_from_url, load_targets
 from amazon_review_pipeline.utils import sha256_text
 
 
-SAVED_IPAD_HTML = Path("data/raw/20260608T193901Z_4a170c/amzn_b0dz75tn5f.html")
+SAVED_IPAD_HTML = Path("tests/fixtures/ipad_top_reviews.html")
 
 
 def write_targets(path: Path, rows: list[dict]) -> None:
