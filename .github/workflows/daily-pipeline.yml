@@ -35,13 +35,13 @@ jobs:
         run: |
           $pythonCandidates = @(
             (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
-            "C:\Users\V2000\AppData\Local\Programs\Python\Python312\python.exe",
+            "C:\actions-runner\python312\python.exe",
             "C:\Program Files\Python312\python.exe",
             "C:\Program Files\Python311\python.exe"
-          ) | Where-Object { $_ -and (Test-Path $_) }
+          ) | Where-Object { $_ -and (Test-Path $_ -ErrorAction SilentlyContinue) }
 
           if (-not $pythonCandidates -or $pythonCandidates.Count -eq 0) {
-            throw "Python executable was not found. Install Python 3.12 for all users or add it to the runner service PATH."
+            throw "Python executable was not found. Install Python 3.12 for all users, or place an accessible Python at C:\actions-runner\python312\python.exe."
           }
 
           $pythonExe = $pythonCandidates[0]
