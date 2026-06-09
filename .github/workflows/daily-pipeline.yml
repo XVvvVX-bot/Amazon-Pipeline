@@ -81,8 +81,8 @@ jobs:
         run: |
           & "C:/actions-runner/python312/python.exe" amazon_pipeline.py daily `
             --fetch-method playwright `
-            --batch-size 30 `
-            --batch-cooldown-minutes 2 `
+            --batch-size 25 `
+            --batch-cooldown-minutes 5 `
             --target-delay-seconds 3 `
             --max-runtime-minutes 300 `
             --max-block-rate 0.25 `
