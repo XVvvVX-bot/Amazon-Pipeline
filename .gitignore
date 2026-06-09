@@ -17,6 +17,7 @@ data/raw/
 data/parsed/
 data/discovery/
 data/exports/
+data/reports/
 data/*.sqlite
 data/*.sqlite-*
 
@@ -24,6 +25,8 @@ data/*.sqlite-*
 !data/
 !data/targets/
 !data/targets/amazon_products.csv
+!data/state/
+!data/state/pipeline_state.json
 
 # OS/editor noise
 .DS_Store

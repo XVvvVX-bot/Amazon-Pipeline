@@ -17,6 +17,7 @@ python -m pip install -r requirements.txt
 - `amazon_review_pipeline/parser.py`: top-review HTML parsing and field normalization.
 - `amazon_review_pipeline/files.py`: JSONL writing, raw-run lookup, and `latest` directory handling.
 - `amazon_review_pipeline/database.py`: SQLite schema, idempotent loading, and validation reports.
+- `amazon_review_pipeline/daily.py`: daily discovery, queue selection, batch fetching, state updates, and exports.
 - `amazon_review_pipeline/commands.py`: fetch, parse, and run workflow orchestration.
 - `amazon_review_pipeline/cli.py`: command-line argument parsing for `amazon_pipeline.py`.
 - `amazon_review_pipeline/discovery.py`: Amazon Best Sellers discovery and target CSV merging.
@@ -111,6 +112,14 @@ Export only one loaded run:
 python amazon_pipeline.py export --db data/reviews.sqlite --run-id 20260608T223058Z_2aaa75 --format csv --output data/exports/reviews_20260608T223058Z_2aaa75.csv
 ```
 
+Run the daily automated pipeline:
+
+```powershell
+python amazon_pipeline.py daily
+```
+
+The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in batches of 50, waits 10 minutes between batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
+
 Outputs:
 
 - Raw HTML: `data/raw/{run_id}/{target_id}.html`
@@ -124,10 +133,39 @@ Outputs:
 - Discovery seed pages: `data/discovery/{run_id}/seed_pages.jsonl`
 - Discovery products: `data/discovery/{run_id}/bestseller_products.jsonl`
 - Discovery report: `data/discovery/{run_id}/discovery_report.json`
+- Daily state: `data/state/pipeline_state.json`
+- Daily report: `data/reports/{run_id}/daily_report.json`
 
 The script does not log in, solve CAPTCHA, use proxies, rotate identities, or bypass access controls. If Amazon returns a sign-in or robot-check page, the response is still saved for inspection and the metadata marks it as `blocked_or_signin`.
 
 `amazon_bestsellers.py` starts from the public Best Sellers root page, discovers one level of category Best Sellers pages, and writes target IDs as `amzn_{asin}` so duplicate product names from different sellers do not collide. Use `--max-seed-pages`, `--max-products-per-page`, and `--delay` to keep discovery bounded.
+
+## Daily Automation
+
+The daily automation uses an incremental queue instead of manually choosing a fetch range.
+
+Fetch queue rules:
+
+- Fetch newly discovered ASINs.
+- Fetch active ASINs that have never been fetched.
+- Refresh stale ASINs after 7 days.
+- Retry network failures after 1 day.
+- Skip blocked/sign-in targets for 3 days.
+
+Batch behavior:
+
+- Default batch size: 50 targets.
+- Default cooldown between batches: 10 minutes.
+- Default runtime cap: 300 minutes.
+- Stop early if block rate reaches 25% or 5 targets are blocked consecutively.
+
+GitHub Actions:
+
+- `.github/workflows/daily-pipeline.yml` runs daily and can also be triggered manually.
+- It downloads the previous `reviews.sqlite` and `reviews.csv` from the `latest-data` GitHub release if available.
+- It uploads raw HTML, parsed reports, discovery outputs, daily reports, and exports as workflow artifacts.
+- It updates the `latest-data` release with the latest cumulative `reviews.sqlite` and `reviews.csv`.
+- It commits only small persistent files back to Git: `data/targets/amazon_products.csv` and `data/state/pipeline_state.json`.
 
 ## SQLite Schema
 

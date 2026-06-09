@@ -3,8 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from amazon_review_pipeline.commands import command_export, command_fetch, command_load, command_parse, command_run, command_validate
+from amazon_review_pipeline.commands import command_daily, command_export, command_fetch, command_load, command_parse, command_run, command_validate
 from amazon_review_pipeline.config import DEFAULT_DB_PATH, DEFAULT_PARSED_ROOT, DEFAULT_RAW_ROOT, DEFAULT_TARGETS
+from amazon_review_pipeline.daily import DEFAULT_REPORTS_ROOT, DEFAULT_STATE_PATH
+from amazon_review_pipeline.discovery import BESTSELLERS_URL, DEFAULT_DISCOVERY_ROOT
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,6 +54,31 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--output", type=Path, required=True)
     export.add_argument("--run-id")
     export.set_defaults(func=command_export)
+
+    daily = subparsers.add_parser("daily", help="Run automated discovery and batch-until-drained incremental ingestion.")
+    daily.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    daily.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
+    daily.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
+    daily.add_argument("--parsed-root", type=Path, default=DEFAULT_PARSED_ROOT)
+    daily.add_argument("--reports-root", type=Path, default=DEFAULT_REPORTS_ROOT)
+    daily.add_argument("--discovery-root", type=Path, default=DEFAULT_DISCOVERY_ROOT)
+    daily.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    daily.add_argument("--export-csv", type=Path, default=Path("data/exports/reviews.csv"))
+    daily.add_argument("--seed-url", default=BESTSELLERS_URL)
+    daily.add_argument("--max-seed-pages", type=int, default=12)
+    daily.add_argument("--max-products-per-page", type=int, default=0)
+    daily.add_argument("--discovery-delay", type=float, default=2.0)
+    daily.add_argument("--timeout", type=float, default=20.0)
+    daily.add_argument("--batch-size", type=int, default=50)
+    daily.add_argument("--batch-cooldown-minutes", type=float, default=10.0)
+    daily.add_argument("--target-delay-seconds", type=float, default=0.0)
+    daily.add_argument("--stale-days", type=int, default=7)
+    daily.add_argument("--blocked-cooldown-days", type=int, default=3)
+    daily.add_argument("--error-retry-days", type=int, default=1)
+    daily.add_argument("--max-runtime-minutes", type=float, default=300.0)
+    daily.add_argument("--max-block-rate", type=float, default=0.25)
+    daily.add_argument("--max-consecutive-blocked", type=int, default=5)
+    daily.set_defaults(func=command_daily)
 
     return parser
 

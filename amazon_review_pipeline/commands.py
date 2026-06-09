@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from amazon_review_pipeline.database import export_reviews, load_pipeline_run, validate_database
+from amazon_review_pipeline.daily import run_daily_pipeline
 from amazon_review_pipeline.extraction import extract_reviews_from_raw_dir
 from amazon_review_pipeline.fetch_cache import build_content_hash_index, find_reusable_fetch, reuse_fetch_metadata
 from amazon_review_pipeline.fetcher import fetch_target
@@ -106,6 +107,12 @@ def command_validate(args: argparse.Namespace) -> int:
 def command_export(args: argparse.Namespace) -> int:
     summary = export_reviews(args.db, args.output, args.format, args.run_id)
     print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
+def command_daily(args: argparse.Namespace) -> int:
+    report = run_daily_pipeline(args)
+    print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
 
