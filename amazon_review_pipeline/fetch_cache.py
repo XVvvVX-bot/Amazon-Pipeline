@@ -42,14 +42,20 @@ def reuse_fetch_metadata(target: Target, existing: dict) -> dict:
         "html_path": existing.get("html_path"),
         "content_hash": existing.get("content_hash"),
         "blocked_or_signin": False,
+        "blocked_reason": existing.get("blocked_reason"),
+        "review_section_detected": bool(existing.get("review_section_detected")),
         "response_bytes": existing.get("response_bytes") or 0,
         "page_title": existing.get("page_title"),
         "product_title": existing.get("product_title"),
         "error_message": None,
+        "fallback_error_message": None,
         "raw_storage": "reused",
         "reused_from_run_id": existing.get("run_id"),
         "reused_from_html_path": existing.get("html_path"),
         "reused_at": utc_timestamp(),
+        "fetch_method": existing.get("fetch_method") or "requests",
+        "rendered": bool(existing.get("rendered")),
+        "attempt_count": 0,
     }
 
 

@@ -53,10 +53,16 @@ CREATE TABLE IF NOT EXISTS raw_pages (
     reused_from_html_path TEXT,
     content_hash TEXT,
     blocked_or_signin INTEGER NOT NULL DEFAULT 0,
+    blocked_reason TEXT,
+    review_section_detected INTEGER NOT NULL DEFAULT 0,
     response_bytes INTEGER NOT NULL DEFAULT 0,
     page_title TEXT,
     product_title TEXT,
     error_message TEXT,
+    fallback_error_message TEXT,
+    fetch_method TEXT,
+    rendered INTEGER NOT NULL DEFAULT 0,
+    attempt_count INTEGER NOT NULL DEFAULT 1,
     UNIQUE (run_id, target_id),
     FOREIGN KEY (run_id) REFERENCES ingestion_runs(run_id)
 );
@@ -209,13 +215,20 @@ def table_columns(connection: sqlite3.Connection, table_name: str) -> set[str]:
 def ensure_raw_page_storage_columns(connection: sqlite3.Connection) -> None:
     if not table_exists(connection, "raw_pages"):
         return
-    columns = table_columns(connection, "raw_pages")
-    if "raw_storage" not in columns:
-        connection.execute("ALTER TABLE raw_pages ADD COLUMN raw_storage TEXT NOT NULL DEFAULT 'stored'")
-    if "reused_from_run_id" not in columns:
-        connection.execute("ALTER TABLE raw_pages ADD COLUMN reused_from_run_id TEXT")
-    if "reused_from_html_path" not in columns:
-        connection.execute("ALTER TABLE raw_pages ADD COLUMN reused_from_html_path TEXT")
+    ensure_column(connection, "raw_pages", "raw_storage", "TEXT NOT NULL DEFAULT 'stored'")
+    ensure_column(connection, "raw_pages", "reused_from_run_id", "TEXT")
+    ensure_column(connection, "raw_pages", "reused_from_html_path", "TEXT")
+    ensure_column(connection, "raw_pages", "blocked_reason", "TEXT")
+    ensure_column(connection, "raw_pages", "review_section_detected", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(connection, "raw_pages", "fallback_error_message", "TEXT")
+    ensure_column(connection, "raw_pages", "fetch_method", "TEXT")
+    ensure_column(connection, "raw_pages", "rendered", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(connection, "raw_pages", "attempt_count", "INTEGER NOT NULL DEFAULT 1")
+
+
+def ensure_column(connection: sqlite3.Connection, table_name: str, column_name: str, column_definition: str) -> None:
+    if column_name not in table_columns(connection, table_name):
+        connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
 
 
 def load_pipeline_run(db_path: Path, parsed_dir: Path, raw_dir: Path, targets_path: Path | None = None) -> dict:
@@ -462,10 +475,11 @@ def upsert_raw_pages(connection: sqlite3.Connection, metadata_by_target: dict[st
                 page_key, run_id, target_id, asin, requested_url, final_url,
                 status, status_code, fetched_at, html_path, raw_storage,
                 reused_from_run_id, reused_from_html_path, content_hash,
-                blocked_or_signin, response_bytes, page_title,
-                product_title, error_message
+                blocked_or_signin, blocked_reason, review_section_detected,
+                response_bytes, page_title, product_title, error_message,
+                fallback_error_message, fetch_method, rendered, attempt_count
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id, target_id) DO UPDATE SET
                 asin = excluded.asin,
                 requested_url = excluded.requested_url,
@@ -479,10 +493,16 @@ def upsert_raw_pages(connection: sqlite3.Connection, metadata_by_target: dict[st
                 reused_from_html_path = excluded.reused_from_html_path,
                 content_hash = excluded.content_hash,
                 blocked_or_signin = excluded.blocked_or_signin,
+                blocked_reason = excluded.blocked_reason,
+                review_section_detected = excluded.review_section_detected,
                 response_bytes = excluded.response_bytes,
                 page_title = excluded.page_title,
                 product_title = excluded.product_title,
-                error_message = excluded.error_message
+                error_message = excluded.error_message,
+                fallback_error_message = excluded.fallback_error_message,
+                fetch_method = excluded.fetch_method,
+                rendered = excluded.rendered,
+                attempt_count = excluded.attempt_count
             """,
             (
                 f"{run_id}:{target_id}",
@@ -500,10 +520,16 @@ def upsert_raw_pages(connection: sqlite3.Connection, metadata_by_target: dict[st
                 clean_text(metadata.get("reused_from_html_path")),
                 clean_text(metadata.get("content_hash")),
                 int(bool(metadata.get("blocked_or_signin"))),
+                clean_text(metadata.get("blocked_reason")),
+                int(bool(metadata.get("review_section_detected"))),
                 int(metadata.get("response_bytes") or 0),
                 clean_text(metadata.get("page_title")),
                 clean_text(metadata.get("product_title")),
                 clean_text(metadata.get("error_message")),
+                clean_text(metadata.get("fallback_error_message")),
+                clean_text(metadata.get("fetch_method")),
+                int(bool(metadata.get("rendered"))),
+                int(metadata.get("attempt_count") or 1),
             ),
         )
         count += 1

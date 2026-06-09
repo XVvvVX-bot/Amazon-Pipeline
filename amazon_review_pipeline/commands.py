@@ -38,7 +38,13 @@ def command_fetch(args: argparse.Namespace) -> int:
         if reusable_metadata:
             metadata = reuse_fetch_metadata(target, reusable_metadata)
         else:
-            metadata = fetch_target(target, run_raw_dir, args.timeout, content_hash_index)
+            metadata = fetch_target(
+                target,
+                run_raw_dir,
+                args.timeout,
+                content_hash_index,
+                fetch_method=getattr(args, "fetch_method", "requests"),
+            )
         metadata["run_id"] = run_id
         metadata_rows.append(metadata)
 
@@ -82,7 +88,13 @@ def command_parse(args: argparse.Namespace) -> int:
 
 
 def command_run(args: argparse.Namespace) -> int:
-    fetch_args = argparse.Namespace(targets=args.targets, raw_root=args.raw_root, timeout=args.timeout, force=args.force)
+    fetch_args = argparse.Namespace(
+        targets=args.targets,
+        raw_root=args.raw_root,
+        timeout=args.timeout,
+        force=args.force,
+        fetch_method=args.fetch_method,
+    )
     command_fetch(fetch_args)
     parse_args = argparse.Namespace(raw_dir=args.raw_root / "latest", parsed_root=args.parsed_root, keep_jsonl=args.keep_jsonl)
     return command_parse(parse_args)
@@ -129,5 +141,15 @@ def fetch_summary(run_id: str, targets_path: Path, targets: list[Target], metada
         "raw_html_stored": sum(1 for row in metadata_rows if row.get("raw_storage") == "stored"),
         "raw_html_reused": sum(1 for row in metadata_rows if row.get("raw_storage") == "reused"),
         "raw_html_deduplicated": sum(1 for row in metadata_rows if row.get("raw_storage") == "deduplicated"),
+        "review_sections_detected": sum(1 for row in metadata_rows if row.get("review_section_detected")),
+        "fetch_methods": count_by(metadata_rows, "fetch_method"),
         "metadata_path": str(metadata_path),
     }
+
+
+def count_by(rows: list[dict], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        value = str(row.get(key) or "unknown")
+        counts[value] = counts.get(value, 0) + 1
+    return counts

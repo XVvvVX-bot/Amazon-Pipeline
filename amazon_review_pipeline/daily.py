@@ -136,7 +136,13 @@ def run_daily_batch(
 
     metadata_rows = []
     for target in batch_targets:
-        metadata = fetch_target(target, raw_dir, args.timeout, content_hash_index)
+        metadata = fetch_target(
+            target,
+            raw_dir,
+            args.timeout,
+            content_hash_index,
+            fetch_method=getattr(args, "fetch_method", "requests"),
+        )
         metadata["run_id"] = batch_run_id
         metadata_rows.append(metadata)
         if args.target_delay_seconds > 0:
@@ -301,6 +307,9 @@ def apply_fetch_metadata_to_state(state: dict, metadata_rows: list[dict]) -> Non
         entry["last_status"] = status
         entry["last_status_code"] = metadata.get("status_code")
         entry["latest_content_hash"] = metadata.get("content_hash")
+        entry["last_fetch_method"] = metadata.get("fetch_method")
+        entry["latest_review_section_detected"] = bool(metadata.get("review_section_detected"))
+        entry["last_blocked_reason"] = metadata.get("blocked_reason")
         if status in SUCCESS_STATUSES:
             entry["last_successful_fetch_at"] = fetched_at
             entry["fetch_error_count"] = 0
@@ -318,7 +327,18 @@ def summarize_metadata(metadata_rows: list[dict]) -> dict:
         "fetch_errors": sum(1 for row in metadata_rows if row.get("status") == "fetch_error"),
         "raw_html_stored": sum(1 for row in metadata_rows if row.get("raw_storage") == "stored"),
         "raw_html_deduplicated": sum(1 for row in metadata_rows if row.get("raw_storage") == "deduplicated"),
+        "review_sections_detected": sum(1 for row in metadata_rows if row.get("review_section_detected")),
+        "fetch_methods": count_by(metadata_rows, "fetch_method"),
+        "blocked_reasons": count_by([row for row in metadata_rows if row.get("blocked_reason")], "blocked_reason"),
     }
+
+
+def count_by(rows: list[dict], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        value = str(row.get(key) or "unknown")
+        counts[value] = counts.get(value, 0) + 1
+    return counts
 
 
 def safety_stop_reason(

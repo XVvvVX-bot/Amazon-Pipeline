@@ -6,6 +6,7 @@ This folder contains a staged pipeline that reads Amazon product URLs from a CSV
 
 ```powershell
 python -m pip install -r requirements.txt
+python -m playwright install chromium
 ```
 
 ## Project Layout
@@ -53,6 +54,16 @@ Fetch raw HTML from active targets:
 
 ```powershell
 python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv
+```
+
+Fetch modes:
+
+- `requests`: fast static HTTP fetch.
+- `playwright`: clean Chromium render, no login cookies.
+- `auto`: try `requests`, then retry with Playwright only when the page is not blocked but no review section is detected.
+
+```powershell
+python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv --fetch-method auto
 ```
 
 By default, fetch reuses a prior successful raw page for the same `target_id` instead of requesting Amazon again. To force a fresh network request:
@@ -118,7 +129,13 @@ Run the daily automated pipeline:
 python amazon_pipeline.py daily
 ```
 
-The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in batches of 50, waits 10 minutes between batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
+The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in batches of 50 by default, waits 10 minutes between batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
+
+For self-hosted Amazon acquisition, prefer rendered fetching:
+
+```powershell
+python amazon_pipeline.py daily --fetch-method playwright --batch-size 10 --target-delay-seconds 3
+```
 
 Outputs:
 
@@ -161,11 +178,44 @@ Batch behavior:
 
 GitHub Actions:
 
-- `.github/workflows/daily-pipeline.yml` runs daily and can also be triggered manually.
+- `.github/workflows/ci.yml` runs tests on GitHub-hosted runners for code changes.
+- `.github/workflows/daily-pipeline.yml` runs daily on a self-hosted runner labeled `amazon-acquisition` and can also be triggered manually.
+- The daily workflow uses `--fetch-method playwright` because GitHub-hosted/static HTTP fetching produced frequent blocks or pages without parsable review DOM.
 - It downloads the previous `reviews.sqlite` and `reviews.csv` from the `latest-data` GitHub release if available.
 - It uploads raw HTML, parsed reports, discovery outputs, daily reports, and exports as workflow artifacts.
 - It updates the `latest-data` release with the latest cumulative `reviews.sqlite` and `reviews.csv`.
 - It commits only small persistent files back to Git: `data/targets/amazon_products.csv` and `data/state/pipeline_state.json`.
+
+### Self-Hosted Acquisition Runner
+
+Use your personal machine as the first acquisition runner, then move the same workflow to a company VM later.
+
+Runner requirements:
+
+- GitHub self-hosted runner registered for this repository.
+- Runner label: `amazon-acquisition`.
+- Python 3.12.
+- GitHub CLI `gh` authenticated enough to read/create/upload the `latest-data` release.
+- Bash-compatible shell for workflow script steps.
+- Python dependencies from `requirements.txt`.
+- Playwright Chromium installed with `python -m playwright install chromium`.
+
+Personal-machine setup:
+
+1. In GitHub, open **Settings > Actions > Runners > New self-hosted runner**.
+2. Install the runner on your machine using GitHub's commands.
+3. Add the custom label `amazon-acquisition`.
+4. Start the runner as a background service or keep the runner process open during scheduled acquisition.
+5. Manually run **Daily Amazon Review Pipeline** from the Actions tab.
+
+Company-VM migration:
+
+1. Provision the VM and install the same prerequisites.
+2. Register a new self-hosted runner with the same `amazon-acquisition` label.
+3. Stop or remove the personal-machine runner.
+4. Re-run the same GitHub workflow without code changes.
+
+The acquisition runner still uses a clean browser context. Do not copy personal Amazon cookies, login sessions, CAPTCHA tokens, proxy credentials, or browser profiles into the runner.
 
 ## SQLite Schema
 

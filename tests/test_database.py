@@ -133,8 +133,19 @@ def test_load_pipeline_run_creates_schema_and_is_idempotent(tmp_path):
             row[1]
             for row in connection.execute("PRAGMA table_info(reviews)")
         }
+        raw_page_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(raw_pages)")
+        }
     assert "reviewer_name" in review_columns
     assert "reviewer_hash" not in review_columns
+    assert {
+        "fetch_method",
+        "rendered",
+        "review_section_detected",
+        "blocked_reason",
+        "attempt_count",
+    }.issubset(raw_page_columns)
 
 
 def test_load_pipeline_run_can_parse_raw_html_without_jsonl(tmp_path):

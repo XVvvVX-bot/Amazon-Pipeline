@@ -32,6 +32,10 @@ def extract_reviews_from_raw_dir(raw_dir: Path, metadata_by_target: dict[str, di
                 "html_path": html_path_value,
                 "source_url": source_url,
                 "blocked_or_signin": bool(metadata.get("blocked_or_signin")),
+                "blocked_reason": metadata.get("blocked_reason"),
+                "fetch_method": metadata.get("fetch_method"),
+                "rendered": bool(metadata.get("rendered")),
+                "review_section_detected": bool(metadata.get("review_section_detected")) or bool(reviews),
                 "review_count": len(reviews),
                 "non_empty_bodies": sum(1 for review in reviews if review.get("body")),
             }

@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 
 from amazon_review_pipeline.commands import command_fetch, command_parse
-from amazon_review_pipeline.fetcher import detect_blocked_or_signin, fetch_target
+from amazon_review_pipeline.fetcher import FetchAttempt, detect_blocked_or_signin, fetch_target
 from amazon_review_pipeline.models import Target
-from amazon_review_pipeline.parser import parse_top_reviews
+from amazon_review_pipeline.parser import detect_review_section, parse_top_reviews
 from amazon_review_pipeline.targets import infer_asin_from_url, load_targets
 from amazon_review_pipeline.utils import sha256_text
 
@@ -86,6 +86,22 @@ def test_parser_extracts_saved_ipad_top_reviews():
     assert reviews[0]["review_id"] == "R1D1X8LOJADBXT"
     assert reviews[0]["rating"] == 5.0
     assert reviews[0]["target_id"] == "ipad"
+
+
+def test_parser_extracts_rendered_top_reviews():
+    html = Path("tests/fixtures/rendered_top_reviews.html").read_text(encoding="utf-8")
+
+    reviews = parse_top_reviews(html, "https://example.test/sunscreen", target_id="sunscreen")
+
+    assert detect_review_section(html) is True
+    assert len(reviews) == 3
+    assert reviews[0]["review_id"] == "R-RENDERED-1"
+    assert reviews[0]["reviewer_name"] == "Paulson"
+    assert reviews[0]["rating"] == 5.0
+    assert reviews[0]["title"] == "Finally Found a Sunscreen That Feels Natural and Gentle"
+    assert reviews[0]["verified_purchase"] is True
+    assert reviews[0]["helpful_votes"] == 5
+    assert "best sunscreen" in reviews[0]["body"]
 
 
 def test_blocked_signin_detection():
@@ -220,3 +236,96 @@ def test_fetch_target_deduplicates_identical_html(monkeypatch, tmp_path):
     assert metadata["raw_storage"] == "deduplicated"
     assert metadata["html_path"] == str(existing_html)
     assert not (tmp_path / "new-run" / "ipad.html").exists()
+
+
+def test_fetch_target_auto_falls_back_to_playwright_when_reviews_are_missing(monkeypatch, tmp_path):
+    request_html = "<html><title>Amazon product</title><span id='productTitle'>Sunscreen</span></html>"
+    rendered_html = Path("tests/fixtures/rendered_top_reviews.html").read_text(encoding="utf-8")
+
+    class FakeResponse:
+        content = request_html.encode("utf-8")
+        status_code = 200
+        url = "https://www.amazon.com/dp/B002MSN3QQ/"
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+
+        def get(self, *_args, **_kwargs):
+            return FakeResponse()
+
+    def fake_playwright(target, timeout):
+        return FetchAttempt(
+            html=rendered_html,
+            final_url=target.url,
+            status_code=200,
+            fetch_method="playwright",
+            rendered=True,
+        )
+
+    monkeypatch.setattr("amazon_review_pipeline.fetcher.requests.Session", FakeSession)
+    monkeypatch.setattr("amazon_review_pipeline.fetcher.fetch_via_playwright", fake_playwright)
+
+    metadata = fetch_target(
+        Target(
+            target_id="sunscreen",
+            url="https://www.amazon.com/dp/B002MSN3QQ/",
+            asin="B002MSN3QQ",
+            product_name="Sunscreen",
+            category="beauty",
+            active=True,
+            notes=None,
+        ),
+        tmp_path / "raw",
+        timeout=1.0,
+        fetch_method="auto",
+    )
+
+    assert metadata["status"] == "fetched"
+    assert metadata["fetch_method"] == "playwright"
+    assert metadata["rendered"] is True
+    assert metadata["attempt_count"] == 2
+    assert metadata["review_section_detected"] is True
+    assert Path(metadata["html_path"]).read_text(encoding="utf-8") == rendered_html
+
+
+def test_fetch_target_auto_does_not_retry_blocked_pages(monkeypatch, tmp_path):
+    blocked_html = Path("tests/fixtures/blocked_signin.html").read_text(encoding="utf-8")
+
+    class FakeResponse:
+        content = blocked_html.encode("utf-8")
+        status_code = 200
+        url = "https://www.amazon.com/dp/B0000ANHT7/"
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+
+        def get(self, *_args, **_kwargs):
+            return FakeResponse()
+
+    def fail_playwright(*_args, **_kwargs):
+        raise AssertionError("blocked requests should not be retried with Playwright")
+
+    monkeypatch.setattr("amazon_review_pipeline.fetcher.requests.Session", FakeSession)
+    monkeypatch.setattr("amazon_review_pipeline.fetcher.fetch_via_playwright", fail_playwright)
+
+    metadata = fetch_target(
+        Target(
+            target_id="blocked",
+            url="https://www.amazon.com/dp/B0000ANHT7/",
+            asin="B0000ANHT7",
+            product_name="Blocked Product",
+            category="best_sellers",
+            active=True,
+            notes=None,
+        ),
+        tmp_path / "raw",
+        timeout=1.0,
+        fetch_method="auto",
+    )
+
+    assert metadata["status"] == "blocked"
+    assert metadata["fetch_method"] == "requests"
+    assert metadata["attempt_count"] == 1
+    assert metadata["blocked_reason"] == "sign_in"

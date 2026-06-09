@@ -185,7 +185,7 @@ def test_daily_pipeline_drains_batches_with_cooldown_and_loads_reviews(tmp_path,
         products_path.write_text("".join(json.dumps(row) + "\n" for row in products), encoding="utf-8")
         return {"run_id": "discovery-test", "products_path": str(products_path), "discovered_products": 2}
 
-    def fake_fetch(target, output_dir, timeout, content_hash_index):
+    def fake_fetch(target, output_dir, timeout, content_hash_index, fetch_method="requests"):
         html = f"""
         <div id="localTopReviewsList">
           <div data-hook="reviewContainer" data-reviewid="R-{target.asin}" data-asin="{target.asin}">
@@ -212,13 +212,19 @@ def test_daily_pipeline_drains_batches_with_cooldown_and_loads_reviews(tmp_path,
             "html_path": str(html_path),
             "content_hash": sha256_text(html),
             "blocked_or_signin": False,
+            "blocked_reason": None,
+            "review_section_detected": True,
             "response_bytes": len(html.encode("utf-8")),
             "page_title": "Amazon product",
             "product_title": target.product_name,
             "error_message": None,
+            "fallback_error_message": None,
             "raw_storage": "stored",
             "reused_from_run_id": None,
             "reused_from_html_path": None,
+            "fetch_method": fetch_method,
+            "rendered": False,
+            "attempt_count": 1,
         }
 
     sleep_calls = []
@@ -240,6 +246,7 @@ def test_daily_pipeline_drains_batches_with_cooldown_and_loads_reviews(tmp_path,
             max_products_per_page=0,
             discovery_delay=0,
             timeout=1,
+            fetch_method="auto",
             batch_size=1,
             batch_cooldown_minutes=10,
             target_delay_seconds=0,
@@ -255,6 +262,7 @@ def test_daily_pipeline_drains_batches_with_cooldown_and_loads_reviews(tmp_path,
 
     assert report["queue"]["due_targets"] == 2
     assert report["queue"]["batches_completed"] == 2
+    assert report["batch_reports"][0]["fetch_summary"]["fetch_methods"] == {"auto": 1}
     assert sleep_calls == [600]
     assert Path(report["report_path"]).exists()
     assert state_path.exists()

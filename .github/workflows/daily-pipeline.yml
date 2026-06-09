@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   daily:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, amazon-acquisition]
     timeout-minutes: 360
 
     steps:
@@ -28,6 +28,9 @@ jobs:
 
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium
 
       - name: Download latest cumulative data
         env:
@@ -43,8 +46,10 @@ jobs:
       - name: Run daily pipeline
         run: |
           python amazon_pipeline.py daily \
-            --batch-size 50 \
+            --fetch-method playwright \
+            --batch-size 10 \
             --batch-cooldown-minutes 10 \
+            --target-delay-seconds 3 \
             --max-runtime-minutes 300 \
             --max-block-rate 0.25 \
             --max-consecutive-blocked 5

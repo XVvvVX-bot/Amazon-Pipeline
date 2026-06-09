@@ -7,6 +7,7 @@ from amazon_review_pipeline.commands import command_daily, command_export, comma
 from amazon_review_pipeline.config import DEFAULT_DB_PATH, DEFAULT_PARSED_ROOT, DEFAULT_RAW_ROOT, DEFAULT_TARGETS
 from amazon_review_pipeline.daily import DEFAULT_REPORTS_ROOT, DEFAULT_STATE_PATH
 from amazon_review_pipeline.discovery import BESTSELLERS_URL, DEFAULT_DISCOVERY_ROOT
+from amazon_review_pipeline.fetcher import FETCH_METHODS
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -17,6 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
     fetch.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     fetch.add_argument("--timeout", type=float, default=20.0)
+    fetch.add_argument("--fetch-method", choices=sorted(FETCH_METHODS), default="auto")
     fetch.add_argument("--force", action="store_true", help="Fetch from the network even when a reusable raw page already exists.")
     fetch.set_defaults(func=command_fetch)
 
@@ -31,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     run.add_argument("--parsed-root", type=Path, default=DEFAULT_PARSED_ROOT)
     run.add_argument("--timeout", type=float, default=20.0)
+    run.add_argument("--fetch-method", choices=sorted(FETCH_METHODS), default="auto")
     run.add_argument("--keep-jsonl", action="store_true", help="Write reviews.jsonl staging output during parse. Defaults to false.")
     run.add_argument("--force", action="store_true", help="Fetch from the network even when a reusable raw page already exists.")
     run.set_defaults(func=command_run)
@@ -69,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     daily.add_argument("--max-products-per-page", type=int, default=0)
     daily.add_argument("--discovery-delay", type=float, default=2.0)
     daily.add_argument("--timeout", type=float, default=20.0)
+    daily.add_argument("--fetch-method", choices=sorted(FETCH_METHODS), default="auto")
     daily.add_argument("--batch-size", type=int, default=50)
     daily.add_argument("--batch-cooldown-minutes", type=float, default=10.0)
     daily.add_argument("--target-delay-seconds", type=float, default=0.0)
