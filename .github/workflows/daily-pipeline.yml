@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "0 9 * * *"
   workflow_dispatch:
+    inputs:
+      retry_recent_blocked:
+        description: "Retry targets currently in the 3-day blocked/CAPTCHA cooldown"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -79,6 +85,12 @@ jobs:
 
       - name: Run daily pipeline
         run: |
+          $blockedCooldownDays = 3
+          if ("${{ inputs.retry_recent_blocked }}" -eq "true") {
+            $blockedCooldownDays = 0
+            Write-Host "Manual experiment enabled: retrying recently blocked targets."
+          }
+
           & "C:/actions-runner/python312/python.exe" amazon_pipeline.py daily `
             --fetch-method playwright `
             --batch-size 25 `
@@ -90,6 +102,7 @@ jobs:
             --adaptive-strong-slow-block-rate 0.15 `
             --adaptive-slowdown-multiplier 2 `
             --adaptive-strong-slowdown-multiplier 3 `
+            --blocked-cooldown-days $blockedCooldownDays `
             --max-runtime-minutes 300 `
             --max-block-rate 0.25 `
             --max-consecutive-blocked 5

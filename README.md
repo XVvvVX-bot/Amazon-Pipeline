@@ -168,6 +168,7 @@ Fetch queue rules:
 - Refresh stale ASINs after 7 days.
 - Retry network failures after 1 day.
 - Skip blocked/sign-in targets for 3 days.
+- Manual workflow runs can override the blocked cooldown for an accessibility experiment.
 
 Batch behavior:
 
@@ -183,11 +184,22 @@ GitHub Actions:
 
 - `.github/workflows/ci.yml` runs tests on GitHub-hosted runners for code changes.
 - `.github/workflows/daily-pipeline.yml` runs daily on a self-hosted runner labeled `amazon-acquisition` and can also be triggered manually.
+- Manual daily runs include a `retry_recent_blocked` option. Set it to `true` only when testing whether the current Playwright and randomized pacing strategy can recover targets that were previously blocked.
 - The daily workflow uses `--fetch-method playwright` because GitHub-hosted/static HTTP fetching produced frequent blocks or pages without parsable review DOM.
 - It downloads the previous `reviews.sqlite` and `reviews.csv` from the `latest-data` GitHub release if available.
 - It uploads raw HTML, parsed reports, discovery outputs, daily reports, and exports as workflow artifacts.
 - It updates the `latest-data` release with the latest cumulative `reviews.sqlite` and `reviews.csv`.
 - It commits only small persistent files back to Git: `data/targets/amazon_products.csv` and `data/state/pipeline_state.json`.
+
+Blocked-target experiment:
+
+1. Open **Actions > Daily Amazon Review Pipeline > Run workflow**.
+2. Select `main`.
+3. Enable `retry_recent_blocked`.
+4. Run the workflow.
+5. Compare the daily report's `queue.due_targets`, `fetch_summary.blocked`, `fetch_summary.fetched`, and `pacing.cooldowns` against the previous run.
+
+If the blocked retry succeeds with low block rate, the randomized/adaptive strategy is likely helping. If it quickly blocks again, Amazon remains restrictive even under slower self-hosted acquisition.
 
 ### Self-Hosted Acquisition Runner
 
