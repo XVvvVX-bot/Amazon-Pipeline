@@ -31,10 +31,27 @@ jobs:
             Add-Content -Path $env:GITHUB_PATH -Value $ghDir
           }
 
+      - name: Locate Python
+        run: |
+          $pythonCandidates = @(
+            (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+            "C:\Users\V2000\AppData\Local\Programs\Python\Python312\python.exe",
+            "C:\Program Files\Python312\python.exe",
+            "C:\Program Files\Python311\python.exe"
+          ) | Where-Object { $_ -and (Test-Path $_) }
+
+          if (-not $pythonCandidates -or $pythonCandidates.Count -eq 0) {
+            throw "Python executable was not found. Install Python 3.12 for all users or add it to the runner service PATH."
+          }
+
+          $pythonExe = $pythonCandidates[0]
+          Add-Content -Path $env:GITHUB_ENV -Value "PYTHON_EXE=$pythonExe"
+          Write-Host "Using Python at $pythonExe"
+
       - name: Check runner prerequisites
         run: |
-          python --version
-          $pythonVersion = python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+          & $env:PYTHON_EXE --version
+          $pythonVersion = & $env:PYTHON_EXE -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
           if ($pythonVersion -ne "3.12") {
             throw "Python 3.12 is required on the self-hosted runner. Found Python $pythonVersion."
           }
@@ -45,10 +62,10 @@ jobs:
           gh --version
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: '& $env:PYTHON_EXE -m pip install -r requirements.txt'
 
       - name: Install Playwright Chromium
-        run: python -m playwright install chromium
+        run: '& $env:PYTHON_EXE -m playwright install chromium'
 
       - name: Download latest cumulative data
         env:
@@ -65,11 +82,11 @@ jobs:
           }
 
       - name: Run tests
-        run: python -m pytest -q
+        run: '& $env:PYTHON_EXE -m pytest -q'
 
       - name: Run daily pipeline
         run: |
-          python amazon_pipeline.py daily `
+          & $env:PYTHON_EXE amazon_pipeline.py daily `
             --fetch-method playwright `
             --batch-size 10 `
             --batch-cooldown-minutes 10 `
