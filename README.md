@@ -169,6 +169,7 @@ Fetch queue rules:
 - Retry network failures after 1 day.
 - Skip blocked/sign-in targets for 3 days.
 - Manual workflow runs can override the blocked cooldown for an accessibility experiment.
+- Manual workflow runs can also force a full refetch of every active target.
 
 Batch behavior:
 
@@ -185,6 +186,7 @@ GitHub Actions:
 - `.github/workflows/ci.yml` runs tests on GitHub-hosted runners for code changes.
 - `.github/workflows/daily-pipeline.yml` runs daily on a self-hosted runner labeled `amazon-acquisition` and can also be triggered manually.
 - Manual daily runs include a `retry_recent_blocked` option. Set it to `true` only when testing whether the current Playwright and randomized pacing strategy can recover targets that were previously blocked.
+- Manual daily runs also include a `refetch_everything` option. Set it to `true` only when testing full-refresh behavior, because it makes every active target due immediately.
 - The daily workflow uses `--fetch-method playwright` because GitHub-hosted/static HTTP fetching produced frequent blocks or pages without parsable review DOM.
 - It downloads the previous `reviews.sqlite` and `reviews.csv` from the `latest-data` GitHub release if available.
 - It uploads raw HTML, parsed reports, discovery outputs, daily reports, and exports as workflow artifacts.
@@ -200,6 +202,16 @@ Blocked-target experiment:
 5. Compare the daily report's `queue.due_targets`, `fetch_summary.blocked`, `fetch_summary.fetched`, and `pacing.cooldowns` against the previous run.
 
 If the blocked retry succeeds with low block rate, the randomized/adaptive strategy is likely helping. If it quickly blocks again, Amazon remains restrictive even under slower self-hosted acquisition.
+
+Full-refetch experiment:
+
+1. Open **Actions > Daily Amazon Review Pipeline > Run workflow**.
+2. Select `main`.
+3. Enable `refetch_everything`.
+4. Run the workflow.
+5. Compare the daily report's `queue.due_targets`, `batch_reports`, `fetch_summary.blocked`, `load_summary.duplicates_skipped`, and `pacing.cooldowns`.
+
+This mode sets stale-days and blocked-cooldown-days to zero for that manual run, so it tests whether the current pacing can handle the entire active target list. It still keeps the normal safety stops for block rate, consecutive blocked pages, and max runtime.
 
 ### Self-Hosted Acquisition Runner
 

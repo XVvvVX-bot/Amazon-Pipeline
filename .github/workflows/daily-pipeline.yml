@@ -10,6 +10,11 @@ on:
         required: false
         default: false
         type: boolean
+      refetch_everything:
+        description: "Refetch every active target, including recent successes and blocked targets"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -85,10 +90,18 @@ jobs:
 
       - name: Run daily pipeline
         run: |
+          $staleDays = 7
           $blockedCooldownDays = 3
+
           if ("${{ inputs.retry_recent_blocked }}" -eq "true") {
             $blockedCooldownDays = 0
             Write-Host "Manual experiment enabled: retrying recently blocked targets."
+          }
+
+          if ("${{ inputs.refetch_everything }}" -eq "true") {
+            $staleDays = 0
+            $blockedCooldownDays = 0
+            Write-Host "Manual experiment enabled: refetching every active target."
           }
 
           & "C:/actions-runner/python312/python.exe" amazon_pipeline.py daily `
@@ -102,6 +115,7 @@ jobs:
             --adaptive-strong-slow-block-rate 0.15 `
             --adaptive-slowdown-multiplier 2 `
             --adaptive-strong-slowdown-multiplier 3 `
+            --stale-days $staleDays `
             --blocked-cooldown-days $blockedCooldownDays `
             --max-runtime-minutes 300 `
             --max-block-rate 0.25 `
