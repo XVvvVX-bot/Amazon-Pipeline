@@ -35,6 +35,13 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium
 
+      - name: Add GitHub CLI to PATH
+        run: |
+          $ghDir = "C:\Program Files\GitHub CLI"
+          if (Test-Path "$ghDir\gh.exe") {
+            Add-Content -Path $env:GITHUB_PATH -Value $ghDir
+          }
+
       - name: Check runner prerequisites
         run: |
           python --version
