@@ -16,6 +16,9 @@ jobs:
   daily:
     runs-on: [self-hosted, amazon-acquisition]
     timeout-minutes: 360
+    defaults:
+      run:
+        shell: powershell
 
     steps:
       - name: Check out repository
@@ -32,26 +35,41 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install chromium
 
+      - name: Check runner prerequisites
+        run: |
+          python --version
+          git --version
+          if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+            throw "GitHub CLI 'gh' is required on the self-hosted runner. Install it from https://cli.github.com/ and authenticate it before running acquisition."
+          }
+          gh --version
+
       - name: Download latest cumulative data
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p data data/exports
-          gh release download latest-data --pattern reviews.sqlite --dir data --clobber || true
-          gh release download latest-data --pattern reviews.csv --dir data/exports --clobber || true
+          New-Item -ItemType Directory -Force -Path "data", "data/exports" | Out-Null
+          gh release download latest-data --pattern reviews.sqlite --dir data --clobber
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "No previous reviews.sqlite release asset found; continuing."
+          }
+          gh release download latest-data --pattern reviews.csv --dir data/exports --clobber
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "No previous reviews.csv release asset found; continuing."
+          }
 
       - name: Run tests
         run: python -m pytest -q
 
       - name: Run daily pipeline
         run: |
-          python amazon_pipeline.py daily \
-            --fetch-method playwright \
-            --batch-size 10 \
-            --batch-cooldown-minutes 10 \
-            --target-delay-seconds 3 \
-            --max-runtime-minutes 300 \
-            --max-block-rate 0.25 \
+          python amazon_pipeline.py daily `
+            --fetch-method playwright `
+            --batch-size 10 `
+            --batch-cooldown-minutes 10 `
+            --target-delay-seconds 3 `
+            --max-runtime-minutes 300 `
+            --max-block-rate 0.25 `
             --max-consecutive-blocked 5
 
       - name: Upload daily artifacts
@@ -73,16 +91,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view latest-data >/dev/null 2>&1 || \
+          gh release view latest-data *> $null
+          if ($LASTEXITCODE -ne 0) {
             gh release create latest-data --title "Latest data" --notes "Latest cumulative pipeline outputs" --latest=false
+          }
 
-          assets=()
-          [ -f data/reviews.sqlite ] && assets+=("data/reviews.sqlite")
-          [ -f data/exports/reviews.csv ] && assets+=("data/exports/reviews.csv")
+          $assets = @()
+          if (Test-Path "data/reviews.sqlite") {
+            $assets += "data/reviews.sqlite"
+          }
+          if (Test-Path "data/exports/reviews.csv") {
+            $assets += "data/exports/reviews.csv"
+          }
 
-          if [ "${#assets[@]}" -gt 0 ]; then
-            gh release upload latest-data "${assets[@]}" --clobber
-          fi
+          if ($assets.Count -gt 0) {
+            gh release upload latest-data @assets --clobber
+          }
 
       - name: Commit updated targets and state
         if: success()
@@ -90,7 +114,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/targets/amazon_products.csv data/state/pipeline_state.json
-          if ! git diff --cached --quiet; then
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
             git commit -m "Update daily pipeline state [skip ci]"
             git push
-          fi
+          }

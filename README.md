@@ -196,7 +196,7 @@ Runner requirements:
 - Runner label: `amazon-acquisition`.
 - Python 3.12.
 - GitHub CLI `gh` authenticated enough to read/create/upload the `latest-data` release.
-- Bash-compatible shell for workflow script steps.
+- Windows PowerShell for workflow script steps.
 - Python dependencies from `requirements.txt`.
 - Playwright Chromium installed with `python -m playwright install chromium`.
 
