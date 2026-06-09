@@ -28,7 +28,7 @@ jobs:
         run: |
           $ghDir = "C:\Program Files\GitHub CLI"
           if (Test-Path "$ghDir\gh.exe") {
-            Add-Content -Path $env:GITHUB_PATH -Value $ghDir
+            $ghDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
 
       - name: Locate Python
@@ -58,13 +58,13 @@ jobs:
           }
 
           $pythonExe = $pythonCandidates[0]
-          Add-Content -Path $env:GITHUB_ENV -Value "PYTHON_EXE=$pythonExe"
+          "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Using Python at $pythonExe"
 
       - name: Check runner prerequisites
         run: |
-          & $env:PYTHON_EXE --version
-          $pythonVersion = & $env:PYTHON_EXE -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+          & "$env:PYTHON_EXE" --version
+          $pythonVersion = & "$env:PYTHON_EXE" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
           if ($pythonVersion -ne "3.12") {
             throw "Python 3.12 is required on the self-hosted runner. Found Python $pythonVersion."
           }
@@ -75,10 +75,10 @@ jobs:
           gh --version
 
       - name: Install dependencies
-        run: '& $env:PYTHON_EXE -m pip install -r requirements.txt'
+        run: '& "$env:PYTHON_EXE" -m pip install -r requirements.txt'
 
       - name: Install Playwright Chromium
-        run: '& $env:PYTHON_EXE -m playwright install chromium'
+        run: '& "$env:PYTHON_EXE" -m playwright install chromium'
 
       - name: Download latest cumulative data
         env:
@@ -95,11 +95,11 @@ jobs:
           }
 
       - name: Run tests
-        run: '& $env:PYTHON_EXE -m pytest -q'
+        run: '& "$env:PYTHON_EXE" -m pytest -q'
 
       - name: Run daily pipeline
         run: |
-          & $env:PYTHON_EXE amazon_pipeline.py daily `
+          & "$env:PYTHON_EXE" amazon_pipeline.py daily `
             --fetch-method playwright `
             --batch-size 10 `
             --batch-cooldown-minutes 10 `
