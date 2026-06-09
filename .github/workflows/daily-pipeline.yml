@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -38,7 +38,7 @@ jobs:
           gh release download latest-data --pattern reviews.csv --dir data/exports --clobber || true
 
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest -q
 
       - name: Run daily pipeline
         run: |
@@ -51,10 +51,11 @@ jobs:
 
       - name: Upload daily artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: daily-pipeline-${{ github.run_id }}
           retention-days: 14
+          if-no-files-found: ignore
           path: |
             data/raw/
             data/parsed/
