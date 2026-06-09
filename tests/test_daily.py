@@ -1,12 +1,17 @@
 import argparse
 import json
+import random
 import sqlite3
 from pathlib import Path
 
 from amazon_review_pipeline.daily import (
+    adaptive_cooldown_multiplier,
     apply_fetch_metadata_to_state,
     chunk_targets,
+    delay_range_from_args,
+    next_batch_cooldown,
     run_daily_pipeline,
+    sample_delay,
     select_due_targets,
     safety_stop_reason,
     sync_state_with_targets,
@@ -81,6 +86,61 @@ def test_chunk_targets_splits_backlog_into_batches():
     batches = chunk_targets(targets, 50)
 
     assert [len(batch) for batch in batches] == [50, 50, 20]
+
+
+def test_delay_range_supports_fixed_and_randomized_values():
+    fixed_args = argparse.Namespace(target_delay_seconds=3)
+    fixed_range = delay_range_from_args(
+        fixed_args,
+        "target_delay_seconds",
+        "target_delay_min_seconds",
+        "target_delay_max_seconds",
+    )
+
+    assert fixed_range == {"min": 3.0, "max": 3.0, "fixed": True}
+    assert sample_delay(fixed_range, random.Random(1)) == 3.0
+
+    ranged_args = argparse.Namespace(target_delay_seconds=0, target_delay_min_seconds=5, target_delay_max_seconds=15)
+    ranged = delay_range_from_args(
+        ranged_args,
+        "target_delay_seconds",
+        "target_delay_min_seconds",
+        "target_delay_max_seconds",
+    )
+    sampled = sample_delay(ranged, random.Random(1))
+
+    assert ranged == {"min": 5.0, "max": 15.0, "fixed": False}
+    assert 5 <= sampled <= 15
+
+
+def test_adaptive_cooldown_scales_after_blocked_batch():
+    args = argparse.Namespace(
+        batch_cooldown_minutes=10,
+        batch_cooldown_min_minutes=5,
+        batch_cooldown_max_minutes=12,
+        adaptive_slow_block_rate=0.05,
+        adaptive_strong_slow_block_rate=0.15,
+        adaptive_slowdown_multiplier=2.0,
+        adaptive_strong_slowdown_multiplier=3.0,
+    )
+    batch_reports = [
+        {
+            "metadata_rows": [
+                {"status": "fetched"},
+                {"status": "fetched"},
+                {"status": "fetched"},
+                {"status": "blocked"},
+            ]
+        }
+    ]
+
+    multiplier, reason = adaptive_cooldown_multiplier(args, batch_reports)
+    cooldown = next_batch_cooldown(args, batch_reports, random.Random(2))
+
+    assert (multiplier, reason) == (3.0, "strong_slowdown")
+    assert 300 <= cooldown["base_seconds"] <= 720
+    assert abs(cooldown["seconds"] - cooldown["base_seconds"] * 3) < 0.01
+    assert cooldown["reason"] == "strong_slowdown"
 
 
 def test_sync_and_fetch_metadata_update_state():

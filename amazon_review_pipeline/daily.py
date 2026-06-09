@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,7 +25,12 @@ SUCCESS_STATUSES = {"fetched", "reused"}
 RETRYABLE_STATUSES = {"fetch_error"}
 
 
-def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], None] = time.sleep) -> dict:
+def run_daily_pipeline(
+    args: argparse.Namespace,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    rng: random.Random | None = None,
+) -> dict:
+    rng = rng or random.Random()
     started_at = utc_timestamp()
     start_monotonic = time.monotonic()
     daily_run_id = make_run_id()
@@ -49,6 +55,7 @@ def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], Non
     batches = chunk_targets(due_targets, args.batch_size)
     batch_reports: list[dict] = []
     stop_reason = "queue_drained"
+    cooldown_reports: list[dict] = []
 
     for batch_index, batch_targets in enumerate(batches, start=1):
         batch_report = run_daily_batch(
@@ -57,6 +64,8 @@ def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], Non
             daily_run_id=daily_run_id,
             args=args,
             content_hash_index=content_hash_index,
+            sleep_fn=sleep_fn,
+            rng=rng,
         )
         batch_reports.append(batch_report)
         apply_fetch_metadata_to_state(state, batch_report["metadata_rows"])
@@ -72,8 +81,12 @@ def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], Non
         if stop_reason != "continue":
             break
 
-        if batch_index < len(batches) and args.batch_cooldown_minutes > 0:
-            sleep_fn(args.batch_cooldown_minutes * 60)
+        if batch_index < len(batches):
+            cooldown = next_batch_cooldown(args, batch_reports, rng)
+            batch_report["cooldown_after_batch"] = cooldown
+            cooldown_reports.append(cooldown)
+            if cooldown["seconds"] > 0:
+                sleep_fn(cooldown["seconds"])
 
     validation_report = validate_database(args.db, None)
     validation_path = reports_dir / "validation_report.json"
@@ -94,6 +107,21 @@ def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], Non
             "batches_planned": len(batches),
             "batches_completed": len(batch_reports),
             "remaining_targets": max(len(due_targets) - sum(len(batch["target_ids"]) for batch in batch_reports), 0),
+        },
+        "pacing": {
+            "target_delay_seconds": delay_range_from_args(args, "target_delay_seconds", "target_delay_min_seconds", "target_delay_max_seconds"),
+            "batch_cooldown_seconds": delay_range_from_args(
+                args,
+                "batch_cooldown_minutes",
+                "batch_cooldown_min_minutes",
+                "batch_cooldown_max_minutes",
+                multiplier=60,
+            ),
+            "adaptive_slow_block_rate": getattr(args, "adaptive_slow_block_rate", 0.05),
+            "adaptive_strong_slow_block_rate": getattr(args, "adaptive_strong_slow_block_rate", 0.15),
+            "adaptive_slowdown_multiplier": getattr(args, "adaptive_slowdown_multiplier", 2.0),
+            "adaptive_strong_slowdown_multiplier": getattr(args, "adaptive_strong_slowdown_multiplier", 3.0),
+            "cooldowns": cooldown_reports,
         },
         "stop_reason": stop_reason if stop_reason != "continue" else "queue_drained",
         "batch_reports": strip_batch_metadata(batch_reports),
@@ -127,7 +155,10 @@ def run_daily_batch(
     daily_run_id: str,
     args: argparse.Namespace,
     content_hash_index: dict[str, Path],
+    sleep_fn: Callable[[float], None] = time.sleep,
+    rng: random.Random | None = None,
 ) -> dict:
+    rng = rng or random.Random()
     batch_run_id = f"{daily_run_id}_batch{batch_index:02d}"
     raw_dir = args.raw_root / batch_run_id
     parsed_dir = args.parsed_root / batch_run_id
@@ -135,7 +166,9 @@ def run_daily_batch(
     parsed_dir.mkdir(parents=True, exist_ok=True)
 
     metadata_rows = []
-    for target in batch_targets:
+    target_delay_range = delay_range_from_args(args, "target_delay_seconds", "target_delay_min_seconds", "target_delay_max_seconds")
+    target_delay_seconds: list[float] = []
+    for target_index, target in enumerate(batch_targets, start=1):
         metadata = fetch_target(
             target,
             raw_dir,
@@ -145,8 +178,11 @@ def run_daily_batch(
         )
         metadata["run_id"] = batch_run_id
         metadata_rows.append(metadata)
-        if args.target_delay_seconds > 0:
-            time.sleep(args.target_delay_seconds)
+        if target_index < len(batch_targets):
+            delay_seconds = sample_delay(target_delay_range, rng)
+            target_delay_seconds.append(delay_seconds)
+            if delay_seconds > 0:
+                sleep_fn(delay_seconds)
 
     metadata_path = raw_dir / "fetch_metadata.jsonl"
     write_jsonl(metadata_rows, metadata_path)
@@ -175,6 +211,9 @@ def run_daily_batch(
         "metadata_path": str(metadata_path),
         "parse_report_path": str(parse_report_path),
         "metadata_rows": metadata_rows,
+        "pacing": {
+            "target_delay_seconds": summarize_delays(target_delay_seconds),
+        },
         "fetch_summary": summarize_metadata(metadata_rows),
         "parse_summary": {
             "target_count": len(target_reports),
@@ -292,6 +331,110 @@ def chunk_targets(targets: list[Target], batch_size: int) -> list[list[Target]]:
     if batch_size <= 0:
         raise ValueError("batch_size must be greater than 0")
     return [targets[index : index + batch_size] for index in range(0, len(targets), batch_size)]
+
+
+def delay_range_from_args(
+    args: argparse.Namespace,
+    fixed_attr: str,
+    min_attr: str,
+    max_attr: str,
+    multiplier: float = 1.0,
+) -> dict[str, float]:
+    min_value = getattr(args, min_attr, None)
+    max_value = getattr(args, max_attr, None)
+    if min_value is None and max_value is None:
+        fixed_value = float(getattr(args, fixed_attr, 0.0) or 0.0)
+        min_seconds = fixed_value * multiplier
+        max_seconds = fixed_value * multiplier
+    else:
+        min_seconds = float(min_value if min_value is not None else 0.0) * multiplier
+        max_seconds = float(max_value if max_value is not None else min_seconds / multiplier) * multiplier
+    if min_seconds < 0 or max_seconds < 0:
+        raise ValueError(f"{min_attr} and {max_attr} must be non-negative")
+    if max_seconds < min_seconds:
+        raise ValueError(f"{max_attr} must be greater than or equal to {min_attr}")
+    return {
+        "min": min_seconds,
+        "max": max_seconds,
+        "fixed": min_seconds == max_seconds,
+    }
+
+
+def sample_delay(delay_range: dict[str, float], rng: random.Random) -> float:
+    min_seconds = float(delay_range["min"])
+    max_seconds = float(delay_range["max"])
+    if max_seconds <= 0:
+        return 0.0
+    if min_seconds == max_seconds:
+        return min_seconds
+    return rng.uniform(min_seconds, max_seconds)
+
+
+def summarize_delays(delays: list[float]) -> dict:
+    if not delays:
+        return {
+            "count": 0,
+            "total": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "average": 0.0,
+        }
+    total = sum(delays)
+    return {
+        "count": len(delays),
+        "total": round(total, 3),
+        "min": round(min(delays), 3),
+        "max": round(max(delays), 3),
+        "average": round(total / len(delays), 3),
+    }
+
+
+def next_batch_cooldown(args: argparse.Namespace, batch_reports: list[dict], rng: random.Random) -> dict:
+    base_range = delay_range_from_args(
+        args,
+        "batch_cooldown_minutes",
+        "batch_cooldown_min_minutes",
+        "batch_cooldown_max_minutes",
+        multiplier=60,
+    )
+    base_seconds = sample_delay(base_range, rng)
+    multiplier, reason = adaptive_cooldown_multiplier(args, batch_reports)
+    seconds = base_seconds * multiplier
+    return {
+        "base_seconds": round(base_seconds, 3),
+        "multiplier": multiplier,
+        "seconds": round(seconds, 3),
+        "reason": reason,
+        "latest_batch_block_rate": round(batch_block_rate(batch_reports[-1]), 4) if batch_reports else 0.0,
+        "cumulative_block_rate": round(cumulative_block_rate(batch_reports), 4),
+    }
+
+
+def adaptive_cooldown_multiplier(args: argparse.Namespace, batch_reports: list[dict]) -> tuple[float, str]:
+    if not batch_reports:
+        return 1.0, "normal"
+    latest_rate = batch_block_rate(batch_reports[-1])
+    strong_threshold = float(getattr(args, "adaptive_strong_slow_block_rate", 0.15))
+    slow_threshold = float(getattr(args, "adaptive_slow_block_rate", 0.05))
+    if latest_rate >= strong_threshold:
+        return float(getattr(args, "adaptive_strong_slowdown_multiplier", 3.0)), "strong_slowdown"
+    if latest_rate >= slow_threshold:
+        return float(getattr(args, "adaptive_slowdown_multiplier", 2.0)), "slowdown"
+    return 1.0, "normal"
+
+
+def batch_block_rate(batch_report: dict) -> float:
+    rows = batch_report.get("metadata_rows") or []
+    if not rows:
+        return 0.0
+    return sum(1 for row in rows if row.get("status") == "blocked") / len(rows)
+
+
+def cumulative_block_rate(batch_reports: list[dict]) -> float:
+    rows = [row for batch in batch_reports for row in batch.get("metadata_rows", [])]
+    if not rows:
+        return 0.0
+    return sum(1 for row in rows if row.get("status") == "blocked") / len(rows)
 
 
 def apply_fetch_metadata_to_state(state: dict, metadata_rows: list[dict]) -> None:

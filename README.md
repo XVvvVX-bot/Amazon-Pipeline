@@ -129,12 +129,12 @@ Run the daily automated pipeline:
 python amazon_pipeline.py daily
 ```
 
-The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in batches of 50 by default, waits 10 minutes between batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
+The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in controlled batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
 
-For self-hosted Amazon acquisition, prefer rendered fetching:
+For self-hosted Amazon acquisition, prefer rendered fetching with randomized pacing:
 
 ```powershell
-python amazon_pipeline.py daily --fetch-method playwright --batch-size 10 --target-delay-seconds 3
+python amazon_pipeline.py daily --fetch-method playwright --batch-size 25 --target-delay-min-seconds 5 --target-delay-max-seconds 15 --batch-cooldown-min-minutes 5 --batch-cooldown-max-minutes 12
 ```
 
 Outputs:
@@ -172,7 +172,10 @@ Fetch queue rules:
 Batch behavior:
 
 - Default batch size: 50 targets.
-- Default cooldown between batches: 10 minutes.
+- Default fixed cooldown between batches: 10 minutes when no cooldown range is supplied.
+- Self-hosted acquisition should use randomized per-target delays and randomized batch cooldowns instead of a fixed cadence.
+- The workflow currently uses 25 targets per batch, 5-15 seconds between targets, and 5-12 minutes between batches.
+- If a batch starts showing CAPTCHA blocks, the next cooldown is multiplied by the adaptive slowdown settings.
 - Default runtime cap: 300 minutes.
 - Stop early if block rate reaches 25% or 5 targets are blocked consecutively.
 
