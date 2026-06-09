@@ -31,40 +31,20 @@ jobs:
             $ghDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
 
-      - name: Locate Python
+      - name: Verify runner Python
         run: |
-          function Test-ExecutablePath {
-            param([string]$Path)
-            if (-not $Path) {
-              return $false
-            }
-            try {
-              return Test-Path -LiteralPath $Path -PathType Leaf
-            } catch {
-              Write-Host "Skipping inaccessible Python candidate: $Path"
-              return $false
-            }
+          $pythonExe = "C:/actions-runner/python312/python.exe"
+          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
+            throw "Python executable was not found at $pythonExe. Place an accessible Python 3.12 runtime there before running acquisition."
           }
-
-          $pythonCandidates = @(
-            "C:\actions-runner\python312\python.exe",
-            "C:\Program Files\Python312\python.exe",
-            "C:\Program Files\Python311\python.exe",
-            (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
-          ) | Where-Object { Test-ExecutablePath $_ }
-
-          if (-not $pythonCandidates -or $pythonCandidates.Count -eq 0) {
-            throw "Python executable was not found. Install Python 3.12 for all users, or place an accessible Python at C:\actions-runner\python312\python.exe."
-          }
-
-          $pythonExe = $pythonCandidates[0]
-          "PYTHON_EXE=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $pythonExe --version
           Write-Host "Using Python at $pythonExe"
 
       - name: Check runner prerequisites
         run: |
-          & "$env:PYTHON_EXE" --version
-          $pythonVersion = & "$env:PYTHON_EXE" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+          $pythonExe = "C:/actions-runner/python312/python.exe"
+          & $pythonExe --version
+          $pythonVersion = & $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
           if ($pythonVersion -ne "3.12") {
             throw "Python 3.12 is required on the self-hosted runner. Found Python $pythonVersion."
           }
@@ -75,10 +55,10 @@ jobs:
           gh --version
 
       - name: Install dependencies
-        run: '& "$env:PYTHON_EXE" -m pip install -r requirements.txt'
+        run: '& "C:/actions-runner/python312/python.exe" -m pip install -r requirements.txt'
 
       - name: Install Playwright Chromium
-        run: '& "$env:PYTHON_EXE" -m playwright install chromium'
+        run: '& "C:/actions-runner/python312/python.exe" -m playwright install chromium'
 
       - name: Download latest cumulative data
         env:
@@ -95,11 +75,11 @@ jobs:
           }
 
       - name: Run tests
-        run: '& "$env:PYTHON_EXE" -m pytest -q'
+        run: '& "C:/actions-runner/python312/python.exe" -m pytest -q'
 
       - name: Run daily pipeline
         run: |
-          & "$env:PYTHON_EXE" amazon_pipeline.py daily `
+          & "C:/actions-runner/python312/python.exe" amazon_pipeline.py daily `
             --fetch-method playwright `
             --batch-size 10 `
             --batch-cooldown-minutes 10 `
