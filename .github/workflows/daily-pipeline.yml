@@ -33,12 +33,25 @@ jobs:
 
       - name: Locate Python
         run: |
+          function Test-ExecutablePath {
+            param([string]$Path)
+            if (-not $Path) {
+              return $false
+            }
+            try {
+              return Test-Path -LiteralPath $Path -PathType Leaf
+            } catch {
+              Write-Host "Skipping inaccessible Python candidate: $Path"
+              return $false
+            }
+          }
+
           $pythonCandidates = @(
-            (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
             "C:\actions-runner\python312\python.exe",
             "C:\Program Files\Python312\python.exe",
-            "C:\Program Files\Python311\python.exe"
-          ) | Where-Object { $_ -and (Test-Path $_ -ErrorAction SilentlyContinue) }
+            "C:\Program Files\Python311\python.exe",
+            (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
+          ) | Where-Object { Test-ExecutablePath $_ }
 
           if (-not $pythonCandidates -or $pythonCandidates.Count -eq 0) {
             throw "Python executable was not found. Install Python 3.12 for all users, or place an accessible Python at C:\actions-runner\python312\python.exe."
