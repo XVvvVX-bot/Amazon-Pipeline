@@ -1,4 +1,2149 @@
 {
-  "targets": {},
+  "last_discovery_at": "2026-06-09T17:53:14.592385+00:00",
+  "targets": {
+    "amzn_b0000anht7": {
+      "active": true,
+      "asin": "B0000ANHT7",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:32.360070+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "54cd8fe035898384b893195e3297e4be6c89cbc552f6d3daeccb1ca736cdaf22"
+    },
+    "amzn_b0014byhje": {
+      "active": true,
+      "asin": "B0014BYHJE",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:32.488120+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "8f9e0bdbe06416c69e92a30beba63c78e3de7920fc1c0479cad3f6f6a2440a9a"
+    },
+    "amzn_b001pu9a9q": {
+      "active": true,
+      "asin": "B001PU9A9Q",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:32.618390+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "a62d9c497cdd866997d057d531bc00a5b73fb1e8638d53c243681ec8f4872d69"
+    },
+    "amzn_b002dyizee": {
+      "active": true,
+      "asin": "B002DYIZEE",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:32.749041+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "21c10c0941ba50efe7dabfd65d5161c1cc067ba47770c21de347691207c94cec"
+    },
+    "amzn_b002dyizh6": {
+      "active": true,
+      "asin": "B002DYIZH6",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:32.878791+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "b83db08a425257a92e5b05b95217353652a8ffa857b9a174000013afdad625a4"
+    },
+    "amzn_b002msn3qq": {
+      "active": true,
+      "asin": "B002MSN3QQ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:33.015403+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:33.015403+00:00",
+      "latest_content_hash": "3cb522e51d238bb45992251628b34e34ba860ff242d1178c9723e4c78fb56aeb"
+    },
+    "amzn_b004qf0tfq": {
+      "active": true,
+      "asin": "B004QF0TFQ",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:34.875613+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "db29cfd5279324a477a265568ddd89bb5d3de0ee930642043fae6dc16697bcf8"
+    },
+    "amzn_b00949ctqq": {
+      "active": true,
+      "asin": "B00949CTQQ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:35.059010+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:35.059010+00:00",
+      "latest_content_hash": "ee0e88ebf91bae0233fda4cd57ba587485c2de32f7a0d084c9a1e2c67ec7e4a0"
+    },
+    "amzn_b00ainmfac": {
+      "active": true,
+      "asin": "B00AINMFAC",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.163378+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "4e0dd4abc655830aef1f148c902eb4933e92332fb5d52b7e5bd60fdc094d48b1"
+    },
+    "amzn_b00b6a6xok": {
+      "active": true,
+      "asin": "B00B6A6XOK",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.293873+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "08f4f16dca5f8f903850db61ce017ca0c8197f1f30ea15c9cf9e415820e9a42b"
+    },
+    "amzn_b00bub7tm0": {
+      "active": true,
+      "asin": "B00BUB7TM0",
+      "block_count": 1,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.422543+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "c61028e71e217fd07dc59bcb4d902aa6a6e3c68f971c2e775734c61857a85aed"
+    },
+    "amzn_b00c91q86i": {
+      "active": true,
+      "asin": "B00C91Q86I",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.550835+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "2497af27a2e4e430cdb2ebff014301cf0af70ec45880eb59cab8c899a9588eaf"
+    },
+    "amzn_b00d1arzmc": {
+      "active": true,
+      "asin": "B00D1ARZMC",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.679241+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "c13787ca01425e73295aebc2e1ef59520916373d27f76ab70926ed72deece497"
+    },
+    "amzn_b00eb4adqw": {
+      "active": true,
+      "asin": "B00EB4ADQW",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.805929+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "8d8439a539d4dd056e720f869773986068f825cac68614a4b399974b16a82db4"
+    },
+    "amzn_b00erc8u4k": {
+      "active": true,
+      "asin": "B00ERC8U4K",
+      "block_count": 1,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:36.937088+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "88108e4e760e272c788d6654402bb8822ba36a68029864c3db79762912f3f63c"
+    },
+    "amzn_b00fzr1c7i": {
+      "active": true,
+      "asin": "B00FZR1C7I",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:37.066279+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:37.066279+00:00",
+      "latest_content_hash": "d5f04f80d256655a55c73107794a390bcd8c916a78e877618a9c912f7d7e17a2"
+    },
+    "amzn_b00g2xgc88": {
+      "active": true,
+      "asin": "B00G2XGC88",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:38.553598+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "4e6e80cc829275f53eb4d78d63465ce4ca0377e4b0a851fa8da9538d90d71537"
+    },
+    "amzn_b00gl2hmes": {
+      "active": true,
+      "asin": "B00GL2HMES",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:38.688406+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:38.688406+00:00",
+      "latest_content_hash": "93eac0a52e272889a3e3eef37dde8c8bfb2269eeb6256ffd6fffa7e06e53504e"
+    },
+    "amzn_b00lh3dmuo": {
+      "active": true,
+      "asin": "B00LH3DMUO",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:40.367296+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "28556ad7a61fb9663ad6847b8d80a96a43e6349482e4d83f4feb01ec321dfe85"
+    },
+    "amzn_b00ntch52w": {
+      "active": true,
+      "asin": "B00NTCH52W",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:40.494692+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "baec084fcffcf7a71235ad1b8e59dfe9062e2f71a985712e9b1035c9a5807206"
+    },
+    "amzn_b00s93equk": {
+      "active": true,
+      "asin": "B00S93EQUK",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:40.622985+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "858c98ab3580044c1f12ac886d055e6ef08a9784e79ee8f69215c57ad4f57981"
+    },
+    "amzn_b00t0c9xrk": {
+      "active": true,
+      "asin": "B00T0C9XRK",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:40.751747+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "4991c4c4322d1b78a077b4d82fcf81e7f685043c3c320860c89e641124fb9461"
+    },
+    "amzn_b00ttd9brc": {
+      "active": true,
+      "asin": "B00TTD9BRC",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:40.882639+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:40.882639+00:00",
+      "latest_content_hash": "3c18e81fe745aca8c37e7aef2a2e41af80406afa3cfd68d94afb5a2d77fa9632"
+    },
+    "amzn_b00u2vqzds": {
+      "active": true,
+      "asin": "B00U2VQZDS",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.186819+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "6e24f0965e1895ecf3d9f0a151cb14a3456fb21ed0e9849dca3c91049e3e7b3b"
+    },
+    "amzn_b0107qpfbu": {
+      "active": true,
+      "asin": "B0107QPFBU",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.315681+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "563d1c41ea71faa66d4f2e15965be734400b902d813ef526e97ef9dac39cd2a6"
+    },
+    "amzn_b010ne2xpc": {
+      "active": true,
+      "asin": "B010NE2XPC",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.449994+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "f924d2fb884c4d03fec82dc3ce5ed15ebc9cfaf9f9b1fc149ea89293d2d2cdec"
+    },
+    "amzn_b0113uzje2": {
+      "active": true,
+      "asin": "B0113UZJE2",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.581640+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "97efe564adf5a1f44f784bc731454057196875277f9d4d171e8579c6ff35bba2"
+    },
+    "amzn_b011lookv8": {
+      "active": true,
+      "asin": "B011LOOKV8",
+      "block_count": 1,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.709741+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "462a31eb4b2a231d9f4261e63f77234365f86ff7ee43e3682b2823e1710c5c1e"
+    },
+    "amzn_b01avdvhti": {
+      "active": true,
+      "asin": "B01AVDVHTI",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.836234+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "53a368b813004c92f0738bfa80ef6700441c8ca210f25a29ffc4996bdc8b3348"
+    },
+    "amzn_b01eig6a4q": {
+      "active": true,
+      "asin": "B01EIG6A4Q",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:42.964764+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "78ec9c4a4eb11fcc3be91276a4aa406a423e1a8a519c8a2983187568eaf4ea4e"
+    },
+    "amzn_b01k1tx77w": {
+      "active": true,
+      "asin": "B01K1TX77W",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:43.101747+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "db18fe5964d83299a64681946458b1cceb314c0d717e0407781d40a67714a1c9"
+    },
+    "amzn_b01lp0u5x0": {
+      "active": true,
+      "asin": "B01LP0U5X0",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:43.230475+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "ab2b029ede99fbd2349d291e4647db67d678157dcf098f3da51607f0268e39e8"
+    },
+    "amzn_b01lr5rg08": {
+      "active": true,
+      "asin": "B01LR5RG08",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:43.357866+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "0ee59bc9d09a29ac2c87f13bb7a81037d9163388d3daee7325d1634a6e1675f7"
+    },
+    "amzn_b01mdtvztz": {
+      "active": true,
+      "asin": "B01MDTVZTZ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:43.488379+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:43.488379+00:00",
+      "latest_content_hash": "03f3b507176fdd78448e696b699c8579a9b7bfa53eceee47050d4766413f3926"
+    },
+    "amzn_b01mqxx9us": {
+      "active": true,
+      "asin": "B01MQXX9US",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:44.571416+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "5c783b017e98901e67a94ccfc9b188bec0a653c171d8af4d37abba068fac13f1"
+    },
+    "amzn_b01mtb55wh": {
+      "active": true,
+      "asin": "B01MTB55WH",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:44.701149+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "371fec6ad4906e68d63ae2309efd4e0a0fa93dd3b5121fdd3078eaaa4d3df388"
+    },
+    "amzn_b01myezpc8": {
+      "active": true,
+      "asin": "B01MYEZPC8",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:44.828427+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "612b71f507872bb1a2a43cf3062cbdd13c843a92375ce943fcb3ec5fab5e2383"
+    },
+    "amzn_b01n0fy3e4": {
+      "active": true,
+      "asin": "B01N0FY3E4",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:44.956253+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "04741bf6f25c4c25c1bc831b6f944adf54be16fef6bf8a7e9bb722cd40e38c4a"
+    },
+    "amzn_b01n9spqhq": {
+      "active": true,
+      "asin": "B01N9SPQHQ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:45.083902+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:45.083902+00:00",
+      "latest_content_hash": "aae99f94b94a86641b5b50c57bed54a5dd7e717a85cd110781e6b2a8be3cd81a"
+    },
+    "amzn_b06x9nq8gx": {
+      "active": true,
+      "asin": "B06X9NQ8GX",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:46.916936+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "d9ceb112db22f545ff093003100a38d0d26fd7582649d4a0f18dfd1721b46269"
+    },
+    "amzn_b071914ggl": {
+      "active": true,
+      "asin": "B071914GGL",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.046469+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "ed48977171daa6caf319ecbbf7af94aaa0c053cbbaa9f3b0e07d39431dddbdf9"
+    },
+    "amzn_b073wjmkhn": {
+      "active": true,
+      "asin": "B073WJMKHN",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.181500+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "819ccfc4af72f5206fdb946ebb273d88f455565ee7aaf0cfac17adda8f031f0d"
+    },
+    "amzn_b0748j34wz": {
+      "active": true,
+      "asin": "B0748J34WZ",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.311303+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "e009fb8477a77004de567060c144e7ebef90c31a47350d4a9ed8dad47b367104"
+    },
+    "amzn_b074pvtpbw": {
+      "active": true,
+      "asin": "B074PVTPBW",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.477304+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "4bbd89015cfd4485256d20c3da920868649f3d67794ecd4c80f4f8bb0791dfe8"
+    },
+    "amzn_b07518rbh2": {
+      "active": true,
+      "asin": "B07518RBH2",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.603495+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "ccd38346f5ac1736bdad63adfc2fb537b1895f06ddd478ae5ca06a5e2fcfcd23"
+    },
+    "amzn_b075zz7xkd": {
+      "active": true,
+      "asin": "B075ZZ7XKD",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.734764+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "cdab5e15ed10c5493c19b7b51e69962e068fb1dd5f8024dd29084b657e66b1fc"
+    },
+    "amzn_b0775m7srd": {
+      "active": true,
+      "asin": "B0775M7SRD",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:47.864258+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:47.864258+00:00",
+      "latest_content_hash": "5f626a2fe655e7213e1f1f1862f34d6b33d8b0c4aad964280b14a5bfa8b240a7"
+    },
+    "amzn_b0798dvt68": {
+      "active": true,
+      "asin": "B0798DVT68",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:48.940069+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:48.940069+00:00",
+      "latest_content_hash": "bb05a9ea0109bd6ed3eca0dd113e67d091d81ede0d4875a1fd45a9ee5daa0b15"
+    },
+    "amzn_b079m8fptw": {
+      "active": true,
+      "asin": "B079M8FPTW",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:50.395320+00:00",
+      "last_status": "fetched",
+      "last_status_code": 200,
+      "last_successful_fetch_at": "2026-06-09T17:53:50.395320+00:00",
+      "latest_content_hash": "5f7cafc0762f758245b92774e8e356a6b05c59b27638cbeaeacdd21b6ea5a9a9"
+    },
+    "amzn_b079vp6dh5": {
+      "active": true,
+      "asin": "B079VP6DH5",
+      "block_count": 1,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_fetch_attempt_at": "2026-06-09T17:53:51.435017+00:00",
+      "last_status": "blocked",
+      "last_status_code": 200,
+      "latest_content_hash": "0e7b137d928e5ccd5033faf558e67773ad08b3213afc6f0b4f8aded2cae634ef"
+    },
+    "amzn_b07bglt25k": {
+      "active": true,
+      "asin": "B07BGLT25K",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07fw3gtxb": {
+      "active": true,
+      "asin": "B07FW3GTXB",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07gb3nvn1": {
+      "active": true,
+      "asin": "B07GB3NVN1",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07gjzqtws": {
+      "active": true,
+      "asin": "B07GJZQTWS",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07jdfpqtc": {
+      "active": true,
+      "asin": "B07JDFPQTC",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07k9q32mr": {
+      "active": true,
+      "asin": "B07K9Q32MR",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07m989jlf": {
+      "active": true,
+      "asin": "B07M989JLF",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07mfmwfyl": {
+      "active": true,
+      "asin": "B07MFMWFYL",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07nd3wr64": {
+      "active": true,
+      "asin": "B07ND3WR64",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07p5k7dqp": {
+      "active": true,
+      "asin": "B07P5K7DQP",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07pbxxncy": {
+      "active": true,
+      "asin": "B07PBXXNCY",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07pfyt8mc": {
+      "active": true,
+      "asin": "B07PFYT8MC",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07plzp5ln": {
+      "active": true,
+      "asin": "B07PLZP5LN",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07pzf3qs3": {
+      "active": true,
+      "asin": "B07PZF3QS3",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07rz4djll": {
+      "active": true,
+      "asin": "B07RZ4DJLL",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07sh31t9v": {
+      "active": true,
+      "asin": "B07SH31T9V",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07wmqp4sf": {
+      "active": true,
+      "asin": "B07WMQP4SF",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07xxsyll8": {
+      "active": true,
+      "asin": "B07XXSYLL8",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b07yp2vh4b": {
+      "active": true,
+      "asin": "B07YP2VH4B",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b081dy9881": {
+      "active": true,
+      "asin": "B081DY9881",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b081kl2qyj": {
+      "active": true,
+      "asin": "B081KL2QYJ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b081zw7wgz": {
+      "active": true,
+      "asin": "B081ZW7WGZ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b083jhccv2": {
+      "active": true,
+      "asin": "B083JHCCV2",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b083vxq7mg": {
+      "active": true,
+      "asin": "B083VXQ7MG",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b084zp848y": {
+      "active": true,
+      "asin": "B084ZP848Y",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0869hgsvl": {
+      "active": true,
+      "asin": "B0869HGSVL",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b086ksdtq4": {
+      "active": true,
+      "asin": "B086KSDTQ4",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b089qrtxt1": {
+      "active": true,
+      "asin": "B089QRTXT1",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08czfhx27": {
+      "active": true,
+      "asin": "B08CZFHX27",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08h3jph74": {
+      "active": true,
+      "asin": "B08H3JPH74",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08jhcvhty": {
+      "active": true,
+      "asin": "B08JHCVHTY",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08jpc2m46": {
+      "active": true,
+      "asin": "B08JPC2M46",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08qdwmmw5": {
+      "active": true,
+      "asin": "B08QDWMMW5",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08qxj31wr": {
+      "active": true,
+      "asin": "B08QXJ31WR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08r6s1m1k": {
+      "active": true,
+      "asin": "B08R6S1M1K",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08tvlyb3q": {
+      "active": true,
+      "asin": "B08TVLYB3Q",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b08wyxnvq7": {
+      "active": true,
+      "asin": "B08WYXNVQ7",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b092j8lpwr": {
+      "active": true,
+      "asin": "B092J8LPWR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b093x8qq12": {
+      "active": true,
+      "asin": "B093X8QQ12",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09541p9wh": {
+      "active": true,
+      "asin": "B09541P9WH",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09542g9zn": {
+      "active": true,
+      "asin": "B09542G9ZN",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b095cn96js": {
+      "active": true,
+      "asin": "B095CN96JS",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b096437yck": {
+      "active": true,
+      "asin": "B096437YCK",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09b8v1lz3": {
+      "active": true,
+      "asin": "B09B8V1LZ3",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09bwfx1l6": {
+      "active": true,
+      "asin": "B09BWFX1L6",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09df9nwc7": {
+      "active": true,
+      "asin": "B09DF9NWC7",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09ft58qqp": {
+      "active": true,
+      "asin": "B09FT58QQP",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09hhdhxwx": {
+      "active": true,
+      "asin": "B09HHDHXWX",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09jfr8htv": {
+      "active": true,
+      "asin": "B09JFR8HTV",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09nw92t8q": {
+      "active": true,
+      "asin": "B09NW92T8Q",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09pdlbfky": {
+      "active": true,
+      "asin": "B09PDLBFKY",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09q3mydqh": {
+      "active": true,
+      "asin": "B09Q3MYDQH",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09qnrj8xv": {
+      "active": true,
+      "asin": "B09QNRJ8XV",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09rtvd1gf": {
+      "active": true,
+      "asin": "B09RTVD1GF",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09rzs3b83": {
+      "active": true,
+      "asin": "B09RZS3B83",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09v7z4tjg": {
+      "active": true,
+      "asin": "B09V7Z4TJG",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09z6q2mlc": {
+      "active": true,
+      "asin": "B09Z6Q2MLC",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b09ztrp3sh": {
+      "active": true,
+      "asin": "B09ZTRP3SH",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b1pddlgz": {
+      "active": true,
+      "asin": "B0B1PDDLGZ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b1pfcgz8": {
+      "active": true,
+      "asin": "B0B1PFCGZ8",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b2p4p2r4": {
+      "active": true,
+      "asin": "B0B2P4P2R4",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b2rm68g2": {
+      "active": true,
+      "asin": "B0B2RM68G2",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b41mysgp": {
+      "active": true,
+      "asin": "B0B41MYSGP",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b56chmsc": {
+      "active": true,
+      "asin": "B0B56CHMSC",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b6plg6g2": {
+      "active": true,
+      "asin": "B0B6PLG6G2",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b7cchpxk": {
+      "active": true,
+      "asin": "B0B7CCHPXK",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0b9t4kcv7": {
+      "active": true,
+      "asin": "B0B9T4KCV7",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bb3jgbh5": {
+      "active": true,
+      "asin": "B0BB3JGBH5",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bjmv9bxj": {
+      "active": true,
+      "asin": "B0BJMV9BXJ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bltynjck": {
+      "active": true,
+      "asin": "B0BLTYNJCK",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bp9snvh9": {
+      "active": true,
+      "asin": "B0BP9SNVH9",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bs1prc4l": {
+      "active": true,
+      "asin": "B0BS1PRC4L",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bt51d747": {
+      "active": true,
+      "asin": "B0BT51D747",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0btlxz8fh": {
+      "active": true,
+      "asin": "B0BTLXZ8FH",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bv241h3f": {
+      "active": true,
+      "asin": "B0BV241H3F",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0bzycjk89": {
+      "active": true,
+      "asin": "B0BZYCJK89",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0c2cy22b8": {
+      "active": true,
+      "asin": "B0C2CY22B8",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0c2z4l3s6": {
+      "active": true,
+      "asin": "B0C2Z4L3S6",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0c3qz7snf": {
+      "active": true,
+      "asin": "B0C3QZ7SNF",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0c5bwrmql": {
+      "active": true,
+      "asin": "B0C5BWRMQL",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0c5zrqs2x": {
+      "active": true,
+      "asin": "B0C5ZRQS2X",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0c6y8nyk1": {
+      "active": true,
+      "asin": "B0C6Y8NYK1",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cbm682sq": {
+      "active": true,
+      "asin": "B0CBM682SQ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cfpjyx7p": {
+      "active": true,
+      "asin": "B0CFPJYX7P",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cfyybhk3": {
+      "active": true,
+      "asin": "B0CFYYBHK3",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0chn5d13p": {
+      "active": true,
+      "asin": "B0CHN5D13P",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cjf94m8j": {
+      "active": true,
+      "asin": "B0CJF94M8J",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0ckkldzm8": {
+      "active": true,
+      "asin": "B0CKKLDZM8",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cm4nxmv2": {
+      "active": true,
+      "asin": "B0CM4NXMV2",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cnvcqzg1": {
+      "active": true,
+      "asin": "B0CNVCQZG1",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cp4xy9qc": {
+      "active": true,
+      "asin": "B0CP4XY9QC",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cqf6t2k1": {
+      "active": true,
+      "asin": "B0CQF6T2K1",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cqmrkrv5": {
+      "active": true,
+      "asin": "B0CQMRKRV5",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0crmp3rqt": {
+      "active": true,
+      "asin": "B0CRMP3RQT",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0crqjnffh": {
+      "active": true,
+      "asin": "B0CRQJNFFH",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0cyjbb2jq": {
+      "active": true,
+      "asin": "B0CYJBB2JQ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d24shzrh": {
+      "active": true,
+      "asin": "B0D24SHZRH",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d2wxyw14": {
+      "active": true,
+      "asin": "B0D2WXYW14",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d5tqjxrn": {
+      "active": true,
+      "asin": "B0D5TQJXRN",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d6c6gs58": {
+      "active": true,
+      "asin": "B0D6C6GS58",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d8fjvtbg": {
+      "active": true,
+      "asin": "B0D8FJVTBG",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d8j2zb8p": {
+      "active": true,
+      "asin": "B0D8J2ZB8P",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d8psdmyh": {
+      "active": true,
+      "asin": "B0D8PSDMYH",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0d8w1yvbx": {
+      "active": true,
+      "asin": "B0D8W1YVBX",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dch8vdxf": {
+      "active": true,
+      "asin": "B0DCH8VDXF",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0ddzn76t9": {
+      "active": true,
+      "asin": "B0DDZN76T9",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0df472vmz": {
+      "active": true,
+      "asin": "B0DF472VMZ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0df8rsvjk": {
+      "active": true,
+      "asin": "B0DF8RSVJK",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dg4wxbcf": {
+      "active": true,
+      "asin": "B0DG4WXBCF",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dghmnq5z": {
+      "active": true,
+      "asin": "B0DGHMNQ5Z",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dht5xzr1": {
+      "active": true,
+      "asin": "B0DHT5XZR1",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dj1g4nwg": {
+      "active": true,
+      "asin": "B0DJ1G4NWG",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0djjmw21w": {
+      "active": true,
+      "asin": "B0DJJMW21W",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dphqrljc": {
+      "active": true,
+      "asin": "B0DPHQRLJC",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dqq1yhjd": {
+      "active": true,
+      "asin": "B0DQQ1YHJD",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dqyr6x8r": {
+      "active": true,
+      "asin": "B0DQYR6X8R",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dr8lz4mk": {
+      "active": true,
+      "asin": "B0DR8LZ4MK",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dr9gn2pm": {
+      "active": true,
+      "asin": "B0DR9GN2PM",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dr9s2dqr": {
+      "active": true,
+      "asin": "B0DR9S2DQR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dt9bg2ng": {
+      "active": true,
+      "asin": "B0DT9BG2NG",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dvbl912r": {
+      "active": true,
+      "asin": "B0DVBL912R",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dxxys4bj": {
+      "active": true,
+      "asin": "B0DXXYS4BJ",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dz254ssr": {
+      "active": true,
+      "asin": "B0DZ254SSR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dz69n6fr": {
+      "active": true,
+      "asin": "B0DZ69N6FR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0dz75tn5f": {
+      "active": true,
+      "asin": "B0DZ75TN5F",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0f291vch4": {
+      "active": true,
+      "asin": "B0F291VCH4",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0f294wfqv": {
+      "active": true,
+      "asin": "B0F294WFQV",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0f5x4fm3q": {
+      "active": true,
+      "asin": "B0F5X4FM3Q",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0f6vkz4fb": {
+      "active": true,
+      "asin": "B0F6VKZ4FB",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0f7z4qztt": {
+      "active": true,
+      "asin": "B0F7Z4QZTT",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0f9km51v2": {
+      "active": true,
+      "asin": "B0F9KM51V2",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fbggcyr4": {
+      "active": true,
+      "asin": "B0FBGGCYR4",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fdkx81rq": {
+      "active": true,
+      "asin": "B0FDKX81RQ",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fg7wxnp3": {
+      "active": true,
+      "asin": "B0FG7WXNP3",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fk1c3gdw": {
+      "active": true,
+      "asin": "B0FK1C3GDW",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fk1mwxcw": {
+      "active": true,
+      "asin": "B0FK1MWXCW",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fkgjyfc8": {
+      "active": true,
+      "asin": "B0FKGJYFC8",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0flqkyqlm": {
+      "active": true,
+      "asin": "B0FLQKYQLM",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fn4nh4k8": {
+      "active": true,
+      "asin": "B0FN4NH4K8",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fnc4gm8v": {
+      "active": true,
+      "asin": "B0FNC4GM8V",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fp2b9bwd": {
+      "active": true,
+      "asin": "B0FP2B9BWD",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fp5byxvr": {
+      "active": true,
+      "asin": "B0FP5BYXVR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fqf9zx7p": {
+      "active": true,
+      "asin": "B0FQF9ZX7P",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fqfb8fmg": {
+      "active": true,
+      "asin": "B0FQFB8FMG",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0fsp32psr": {
+      "active": true,
+      "asin": "B0FSP32PSR",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0ftgjgptm": {
+      "active": true,
+      "asin": "B0FTGJGPTM",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0ftss3phw": {
+      "active": true,
+      "asin": "B0FTSS3PHW",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0g3pjt54g": {
+      "active": true,
+      "asin": "B0G3PJT54G",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0g3y89lw9": {
+      "active": true,
+      "asin": "B0G3Y89LW9",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0g51xwjmv": {
+      "active": true,
+      "asin": "B0G51XWJMV",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0g6ld4kyv": {
+      "active": true,
+      "asin": "B0G6LD4KYV",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gflz774c": {
+      "active": true,
+      "asin": "B0GFLZ774C",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0ggb2gbhk": {
+      "active": true,
+      "asin": "B0GGB2GBHK",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gjtfxnrx": {
+      "active": true,
+      "asin": "B0GJTFXNRX",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0glxk1dy8": {
+      "active": true,
+      "asin": "B0GLXK1DY8",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gqjncmt4": {
+      "active": true,
+      "asin": "B0GQJNCMT4",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0grkc9njp": {
+      "active": true,
+      "asin": "B0GRKC9NJP",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gs5m4xgh": {
+      "active": true,
+      "asin": "B0GS5M4XGH",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gsqlp4zw": {
+      "active": true,
+      "asin": "B0GSQLP4ZW",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gtdw2snf": {
+      "active": true,
+      "asin": "B0GTDW2SNF",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gtmtzf3v": {
+      "active": true,
+      "asin": "B0GTMTZF3V",
+      "block_count": 0,
+      "discovery_count": 1,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00",
+      "last_discovered_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gv1nyfp4": {
+      "active": true,
+      "asin": "B0GV1NYFP4",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gv1qxpdl": {
+      "active": true,
+      "asin": "B0GV1QXPDL",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gvccl285": {
+      "active": true,
+      "asin": "B0GVCCL285",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gy48tlv8": {
+      "active": true,
+      "asin": "B0GY48TLV8",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gylfntcr": {
+      "active": true,
+      "asin": "B0GYLFNTCR",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0gznklc5y": {
+      "active": true,
+      "asin": "B0GZNKLC5Y",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0h11tw4r8": {
+      "active": true,
+      "asin": "B0H11TW4R8",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    },
+    "amzn_b0h2mv8nk8": {
+      "active": true,
+      "asin": "B0H2MV8NK8",
+      "block_count": 0,
+      "discovery_count": 0,
+      "fetch_error_count": 0,
+      "first_seen_at": "2026-06-09T17:53:14.592385+00:00"
+    }
+  },
   "version": 1
 }
