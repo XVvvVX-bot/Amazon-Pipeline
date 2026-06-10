@@ -34,161 +34,184 @@ jobs:
     timeout-minutes: 360
     defaults:
       run:
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        shell: bash
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Add GitHub CLI to PATH
+      - name: Resolve Python
         run: |
-          $ghDir = "C:\Program Files\GitHub CLI"
-          if (Test-Path "$ghDir\gh.exe") {
-            $ghDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
+          set -euo pipefail
 
-      - name: Verify runner Python
-        run: |
-          $pythonExe = "C:/actions-runner/python312/python.exe"
-          if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
-            throw "Python executable was not found at $pythonExe. Place an accessible Python 3.12 runtime there before running acquisition."
-          }
-          & $pythonExe --version
-          Write-Host "Using Python at $pythonExe"
+          python_bin=""
+          for candidate in python3.12 python3 python; do
+            if ! command -v "$candidate" >/dev/null 2>&1; then
+              continue
+            fi
+            version="$("$candidate" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+            if [ "$version" = "3.12" ]; then
+              python_bin="$(command -v "$candidate")"
+              break
+            fi
+          done
+
+          if [ -z "$python_bin" ]; then
+            echo "Python 3.12 is required on the self-hosted runner. Install it or expose it as python3.12/python3 on PATH." >&2
+            exit 1
+          fi
+
+          echo "PYTHON_BIN=$python_bin" >> "$GITHUB_ENV"
+          "$python_bin" --version
+          echo "Using Python at $python_bin"
 
       - name: Check runner prerequisites
         run: |
-          $pythonExe = "C:/actions-runner/python312/python.exe"
-          & $pythonExe --version
-          $pythonVersion = & $pythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-          if ($pythonVersion -ne "3.12") {
-            throw "Python 3.12 is required on the self-hosted runner. Found Python $pythonVersion."
-          }
+          set -euo pipefail
+
+          "$PYTHON_BIN" --version
+          python_version="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+          if [ "$python_version" != "3.12" ]; then
+            echo "Python 3.12 is required on the self-hosted runner. Found Python $python_version." >&2
+            exit 1
+          fi
+
           git --version
-          if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-            throw "GitHub CLI 'gh' is required on the self-hosted runner. Install it from https://cli.github.com/ and authenticate it before running acquisition."
-          }
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "GitHub CLI 'gh' is required on the self-hosted runner. Install it and make sure it is on PATH before running acquisition." >&2
+            exit 1
+          fi
           gh --version
 
       - name: Install dependencies
-        run: '& "C:/actions-runner/python312/python.exe" -m pip install -r requirements.txt'
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pip install -r requirements.txt
 
       - name: Install Playwright Chromium
-        run: '& "C:/actions-runner/python312/python.exe" -m playwright install chromium'
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m playwright install chromium
 
       - name: Download latest cumulative data
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          function Invoke-WithRetry {
-            param(
-              [string]$Name,
-              [scriptblock]$Command,
-              [int]$MaxAttempts = 3,
-              [switch]$Optional
-            )
+          set -euo pipefail
 
-            for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
-              & $Command
-              if ($LASTEXITCODE -eq 0) {
-                return $true
-              }
-              Write-Warning "$Name failed on attempt $attempt of $MaxAttempts with exit code $LASTEXITCODE."
-              if ($attempt -lt $MaxAttempts) {
-                Start-Sleep -Seconds ([Math]::Min(60, 10 * $attempt))
-              }
-            }
+          run_with_retry() {
+            local name="$1"
+            local max_attempts="$2"
+            local optional="$3"
+            shift 3
 
-            if ($Optional) {
-              $global:LASTEXITCODE = 0
-              return $false
-            }
-            throw "$Name failed after $MaxAttempts attempts."
+            local attempt
+            local status
+            for attempt in $(seq 1 "$max_attempts"); do
+              set +e
+              "$@"
+              status=$?
+              set -e
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "WARNING: $name failed on attempt $attempt of $max_attempts with exit code $status." >&2
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep $(( attempt * 10 > 60 ? 60 : attempt * 10 ))
+              fi
+            done
+
+            if [ "$optional" = "true" ]; then
+              return 1
+            fi
+            echo "$name failed after $max_attempts attempts." >&2
+            return "$status"
           }
 
-          New-Item -ItemType Directory -Force -Path "data", "data/exports" | Out-Null
-          $sqliteDownloaded = Invoke-WithRetry "Download reviews.sqlite" { gh release download latest-data --pattern reviews.sqlite --dir data --clobber } -MaxAttempts 3 -Optional
-          if (-not $sqliteDownloaded) {
-            Write-Host "No previous reviews.sqlite release asset found; continuing."
-          }
-          $csvDownloaded = Invoke-WithRetry "Download reviews.csv" { gh release download latest-data --pattern reviews.csv --dir data/exports --clobber } -MaxAttempts 3 -Optional
-          if (-not $csvDownloaded) {
-            Write-Host "No previous reviews.csv release asset found; continuing."
-          }
-          $global:LASTEXITCODE = 0
+          mkdir -p data data/exports
+          if ! run_with_retry "Download reviews.sqlite" 3 true gh release download latest-data --pattern reviews.sqlite --dir data --clobber; then
+            echo "No previous reviews.sqlite release asset found; continuing."
+          fi
+          if ! run_with_retry "Download reviews.csv" 3 true gh release download latest-data --pattern reviews.csv --dir data/exports --clobber; then
+            echo "No previous reviews.csv release asset found; continuing."
+          fi
 
       - name: Run tests
-        run: '& "C:/actions-runner/python312/python.exe" -m pytest -q'
+        run: |
+          set -euo pipefail
+          "$PYTHON_BIN" -m pytest -q
 
       - name: Run daily pipeline
         run: |
-          $staleDays = 7
-          $blockedCooldownDays = 3
-          $maxSeedPages = 12
-          $maxDepartments = 12
-          $maxSubdepartmentDepth = 1
-          $maxSubdepartmentPages = 25
-          $maxPagesPerSeed = 1
-          $batchSize = 25
-          $batchCooldownMinMinutes = 5
-          $batchCooldownMaxMinutes = 12
-          $targetDelayMinSeconds = 5
-          $targetDelayMaxSeconds = 15
-          $maxRuntimeMinutes = 300
-          $maxBlockRate = 0.25
-          $maxConsecutiveBlocked = 5
+          set -euo pipefail
 
-          if ("${{ inputs.retry_recent_blocked }}" -eq "true") {
-            $blockedCooldownDays = 0
-            Write-Host "Manual experiment enabled: retrying recently blocked targets."
-          }
+          stale_days=7
+          blocked_cooldown_days=3
+          max_seed_pages=12
+          max_departments=12
+          max_subdepartment_depth=1
+          max_subdepartment_pages=25
+          max_pages_per_seed=1
+          batch_size=25
+          batch_cooldown_min_minutes=5
+          batch_cooldown_max_minutes=12
+          target_delay_min_seconds=5
+          target_delay_max_seconds=15
+          max_runtime_minutes=300
+          max_block_rate=0.25
+          max_consecutive_blocked=5
 
-          if ("${{ inputs.refetch_everything }}" -eq "true") {
-            $staleDays = 0
-            $blockedCooldownDays = 0
-            Write-Host "Manual experiment enabled: refetching every active target."
-          }
+          if [ "${{ inputs.retry_recent_blocked }}" = "true" ]; then
+            blocked_cooldown_days=0
+            echo "Manual experiment enabled: retrying recently blocked targets."
+          fi
 
-          if ("${{ inputs.aggressive_stress_test }}" -eq "true") {
-            $staleDays = 0
-            $blockedCooldownDays = 0
-            $maxSeedPages = 0
-            $maxDepartments = 0
-            $maxSubdepartmentDepth = 0
-            $maxSubdepartmentPages = 0
-            $maxPagesPerSeed = 0
-            $batchSize = 50
-            $batchCooldownMinMinutes = 1
-            $batchCooldownMaxMinutes = 3
-            $targetDelayMinSeconds = 1
-            $targetDelayMaxSeconds = 4
-            $maxRuntimeMinutes = 345
-            $maxBlockRate = 0.35
-            $maxConsecutiveBlocked = 10
-            Write-Host "Manual aggressive stress test enabled: unbounded Best Sellers discovery and faster full refetch."
-          }
+          if [ "${{ inputs.refetch_everything }}" = "true" ]; then
+            stale_days=0
+            blocked_cooldown_days=0
+            echo "Manual experiment enabled: refetching every active target."
+          fi
 
-          & "C:/actions-runner/python312/python.exe" amazon_pipeline.py daily `
-            --fetch-method playwright `
-            --max-seed-pages $maxSeedPages `
-            --max-departments $maxDepartments `
-            --max-subdepartment-depth $maxSubdepartmentDepth `
-            --max-subdepartment-pages $maxSubdepartmentPages `
-            --max-pages-per-seed $maxPagesPerSeed `
-            --batch-size $batchSize `
-            --batch-cooldown-min-minutes $batchCooldownMinMinutes `
-            --batch-cooldown-max-minutes $batchCooldownMaxMinutes `
-            --target-delay-min-seconds $targetDelayMinSeconds `
-            --target-delay-max-seconds $targetDelayMaxSeconds `
-            --adaptive-slow-block-rate 0.05 `
-            --adaptive-strong-slow-block-rate 0.15 `
-            --adaptive-slowdown-multiplier 2 `
-            --adaptive-strong-slowdown-multiplier 3 `
-            --stale-days $staleDays `
-            --blocked-cooldown-days $blockedCooldownDays `
-            --max-runtime-minutes $maxRuntimeMinutes `
-            --max-block-rate $maxBlockRate `
-            --max-consecutive-blocked $maxConsecutiveBlocked
+          if [ "${{ inputs.aggressive_stress_test }}" = "true" ]; then
+            stale_days=0
+            blocked_cooldown_days=0
+            max_seed_pages=0
+            max_departments=0
+            max_subdepartment_depth=0
+            max_subdepartment_pages=0
+            max_pages_per_seed=0
+            batch_size=50
+            batch_cooldown_min_minutes=1
+            batch_cooldown_max_minutes=3
+            target_delay_min_seconds=1
+            target_delay_max_seconds=4
+            max_runtime_minutes=345
+            max_block_rate=0.35
+            max_consecutive_blocked=10
+            echo "Manual aggressive stress test enabled: unbounded Best Sellers discovery and faster full refetch."
+          fi
+
+          "$PYTHON_BIN" amazon_pipeline.py daily \
+            --fetch-method playwright \
+            --max-seed-pages "$max_seed_pages" \
+            --max-departments "$max_departments" \
+            --max-subdepartment-depth "$max_subdepartment_depth" \
+            --max-subdepartment-pages "$max_subdepartment_pages" \
+            --max-pages-per-seed "$max_pages_per_seed" \
+            --batch-size "$batch_size" \
+            --batch-cooldown-min-minutes "$batch_cooldown_min_minutes" \
+            --batch-cooldown-max-minutes "$batch_cooldown_max_minutes" \
+            --target-delay-min-seconds "$target_delay_min_seconds" \
+            --target-delay-max-seconds "$target_delay_max_seconds" \
+            --adaptive-slow-block-rate 0.05 \
+            --adaptive-strong-slow-block-rate 0.15 \
+            --adaptive-slowdown-multiplier 2 \
+            --adaptive-strong-slowdown-multiplier 3 \
+            --stale-days "$stale_days" \
+            --blocked-cooldown-days "$blocked_cooldown_days" \
+            --max-runtime-minutes "$max_runtime_minutes" \
+            --max-block-rate "$max_block_rate" \
+            --max-consecutive-blocked "$max_consecutive_blocked"
 
       - name: Upload daily artifacts
         if: always()
@@ -209,57 +232,62 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          function Invoke-WithRetry {
-            param(
-              [string]$Name,
-              [scriptblock]$Command,
-              [int]$MaxAttempts = 4,
-              [switch]$Optional
-            )
+          set -euo pipefail
 
-            for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
-              & $Command
-              if ($LASTEXITCODE -eq 0) {
-                return $true
-              }
-              Write-Warning "$Name failed on attempt $attempt of $MaxAttempts with exit code $LASTEXITCODE."
-              if ($attempt -lt $MaxAttempts) {
-                Start-Sleep -Seconds ([Math]::Min(90, 15 * $attempt))
-              }
-            }
+          run_with_retry() {
+            local name="$1"
+            local max_attempts="$2"
+            local optional="$3"
+            shift 3
 
-            if ($Optional) {
-              $global:LASTEXITCODE = 0
-              return $false
-            }
-            throw "$Name failed after $MaxAttempts attempts."
+            local attempt
+            local status
+            for attempt in $(seq 1 "$max_attempts"); do
+              set +e
+              "$@"
+              status=$?
+              set -e
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "WARNING: $name failed on attempt $attempt of $max_attempts with exit code $status." >&2
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep $(( attempt * 15 > 90 ? 90 : attempt * 15 ))
+              fi
+            done
+
+            if [ "$optional" = "true" ]; then
+              return 1
+            fi
+            echo "$name failed after $max_attempts attempts." >&2
+            return "$status"
           }
 
-          $releaseExists = Invoke-WithRetry "View latest-data release" { gh release view latest-data *> $null } -MaxAttempts 4 -Optional
-          if (-not $releaseExists) {
-            Invoke-WithRetry "Create latest-data release" { gh release create latest-data --title "Latest data" --notes "Latest cumulative pipeline outputs" --latest=false } -MaxAttempts 4
-          }
+          if ! run_with_retry "View latest-data release" 4 true gh release view latest-data; then
+            run_with_retry "Create latest-data release" 4 false gh release create latest-data --title "Latest data" --notes "Latest cumulative pipeline outputs" --latest=false
+          fi
 
-          $assets = @()
-          if (Test-Path "data/reviews.sqlite") {
-            $assets += "data/reviews.sqlite"
-          }
-          if (Test-Path "data/exports/reviews.csv") {
-            $assets += "data/exports/reviews.csv"
-          }
+          assets=()
+          if [ -f "data/reviews.sqlite" ]; then
+            assets+=("data/reviews.sqlite")
+          fi
+          if [ -f "data/exports/reviews.csv" ]; then
+            assets+=("data/exports/reviews.csv")
+          fi
 
-          if ($assets.Count -gt 0) {
-            Invoke-WithRetry "Upload latest-data assets" { gh release upload latest-data @assets --clobber } -MaxAttempts 4
-          }
+          if [ "${#assets[@]}" -gt 0 ]; then
+            run_with_retry "Upload latest-data assets" 4 false gh release upload latest-data "${assets[@]}" --clobber
+          fi
 
       - name: Commit updated targets and state
         if: success()
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/targets/amazon_products.csv data/state/pipeline_state.json
-          git diff --cached --quiet
-          if ($LASTEXITCODE -ne 0) {
+          if ! git diff --cached --quiet; then
             git commit -m "Update daily pipeline state [skip ci]"
             git push
-          }
+          fi

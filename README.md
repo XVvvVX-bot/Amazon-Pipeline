@@ -4,7 +4,7 @@ This folder contains a staged pipeline that reads Amazon product URLs from a CSV
 
 ## Install
 
-```powershell
+```bash
 python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
@@ -40,19 +40,19 @@ Targets live in `data/targets/amazon_products.csv` with these columns:
 
 Discover Amazon Best Sellers category pages automatically, extract product URLs, and merge unique ASIN targets into the target list:
 
-```powershell
+```bash
 python amazon_bestsellers.py --targets data/targets/amazon_products.csv
 ```
 
 Run a smaller controlled discovery smoke test:
 
-```powershell
+```bash
 python amazon_bestsellers.py --max-seed-pages 2 --max-products-per-page 10 --delay 0 --targets data/targets/amazon_products.csv
 ```
 
 Fetch raw HTML from active targets:
 
-```powershell
+```bash
 python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv
 ```
 
@@ -62,13 +62,13 @@ Fetch modes:
 - `playwright`: clean Chromium render, no login cookies.
 - `auto`: try `requests`, then retry with Playwright only when the page is not blocked but no review section is detected.
 
-```powershell
+```bash
 python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv --fetch-method auto
 ```
 
 By default, fetch reuses a prior successful raw page for the same `target_id` instead of requesting Amazon again. To force a fresh network request:
 
-```powershell
+```bash
 python amazon_pipeline.py fetch --targets data/targets/amazon_products.csv --force
 ```
 
@@ -76,56 +76,56 @@ Forced fetches still avoid writing duplicate raw HTML when the fetched content h
 
 Equivalent package-style command:
 
-```powershell
+```bash
 python -m amazon_review_pipeline fetch --targets data/targets/amazon_products.csv
 ```
 
 Parse saved raw HTML without another network request. By default this writes `parse_report.json` only and does not keep the intermediate review JSONL:
 
-```powershell
+```bash
 python amazon_pipeline.py parse --raw-dir data/raw/latest
 ```
 
 Keep the optional review JSONL staging file:
 
-```powershell
+```bash
 python amazon_pipeline.py parse --raw-dir data/raw/latest --keep-jsonl
 ```
 
 Fetch and parse in one command:
 
-```powershell
+```bash
 python amazon_pipeline.py run --targets data/targets/amazon_products.csv
 ```
 
 Load parsed reviews and raw metadata into SQLite. If `reviews.jsonl` is absent, the loader parses the saved raw HTML directly:
 
-```powershell
+```bash
 python amazon_pipeline.py load --parsed-dir data/parsed/20260608T193901Z_4a170c --raw-dir data/raw/20260608T193901Z_4a170c --db data/reviews.sqlite
 ```
 
 Validate the loaded database:
 
-```powershell
+```bash
 python amazon_pipeline.py validate --db data/reviews.sqlite --run-id 20260608T193901Z_4a170c --output data/parsed/20260608T193901Z_4a170c/validation_report.json
 ```
 
 Export loaded reviews for downstream analysis:
 
-```powershell
+```bash
 python amazon_pipeline.py export --db data/reviews.sqlite --format csv --output data/exports/reviews.csv
 python amazon_pipeline.py export --db data/reviews.sqlite --format jsonl --output data/exports/reviews.jsonl
 ```
 
 Export only one loaded run:
 
-```powershell
+```bash
 python amazon_pipeline.py export --db data/reviews.sqlite --run-id 20260608T223058Z_2aaa75 --format csv --output data/exports/reviews_20260608T223058Z_2aaa75.csv
 ```
 
 Run the daily automated pipeline:
 
-```powershell
+```bash
 python amazon_pipeline.py daily
 ```
 
@@ -133,7 +133,7 @@ The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon
 
 For self-hosted Amazon acquisition, prefer rendered fetching with randomized pacing:
 
-```powershell
+```bash
 python amazon_pipeline.py daily --fetch-method playwright --batch-size 25 --target-delay-min-seconds 5 --target-delay-max-seconds 15 --batch-cooldown-min-minutes 5 --batch-cooldown-max-minutes 12
 ```
 
@@ -226,7 +226,7 @@ This mode sets discovery caps to zero, forces all active targets due, uses 50 ta
 
 ### Self-Hosted Acquisition Runner
 
-Use your personal machine as the first acquisition runner, then move the same workflow to a company VM later.
+Use a personal machine as the first acquisition runner, then move the same workflow to a company VM later.
 
 Runner requirements:
 
@@ -234,14 +234,14 @@ Runner requirements:
 - Runner label: `amazon-acquisition`.
 - Python 3.12.
 - GitHub CLI `gh` authenticated enough to read/create/upload the `latest-data` release.
-- Windows PowerShell for workflow script steps.
+- macOS or Linux shell environment for workflow script steps.
 - Python dependencies from `requirements.txt`.
 - Playwright Chromium installed with `python -m playwright install chromium`.
 
 Personal-machine setup:
 
 1. In GitHub, open **Settings > Actions > Runners > New self-hosted runner**.
-2. Install the runner on your machine using GitHub's commands.
+2. Install the runner on the acquisition machine using GitHub's commands.
 3. Add the custom label `amazon-acquisition`.
 4. Start the runner as a background service or keep the runner process open during scheduled acquisition.
 5. Manually run **Daily Amazon Review Pipeline** from the Actions tab.
