@@ -75,13 +75,38 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          function Invoke-WithRetry {
+            param(
+              [string]$Name,
+              [scriptblock]$Command,
+              [int]$MaxAttempts = 3,
+              [switch]$Optional
+            )
+
+            for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+              & $Command
+              if ($LASTEXITCODE -eq 0) {
+                return $true
+              }
+              Write-Warning "$Name failed on attempt $attempt of $MaxAttempts with exit code $LASTEXITCODE."
+              if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Seconds ([Math]::Min(60, 10 * $attempt))
+              }
+            }
+
+            if ($Optional) {
+              return $false
+            }
+            throw "$Name failed after $MaxAttempts attempts."
+          }
+
           New-Item -ItemType Directory -Force -Path "data", "data/exports" | Out-Null
-          gh release download latest-data --pattern reviews.sqlite --dir data --clobber
-          if ($LASTEXITCODE -ne 0) {
+          $sqliteDownloaded = Invoke-WithRetry "Download reviews.sqlite" { gh release download latest-data --pattern reviews.sqlite --dir data --clobber } -MaxAttempts 3 -Optional
+          if (-not $sqliteDownloaded) {
             Write-Host "No previous reviews.sqlite release asset found; continuing."
           }
-          gh release download latest-data --pattern reviews.csv --dir data/exports --clobber
-          if ($LASTEXITCODE -ne 0) {
+          $csvDownloaded = Invoke-WithRetry "Download reviews.csv" { gh release download latest-data --pattern reviews.csv --dir data/exports --clobber } -MaxAttempts 3 -Optional
+          if (-not $csvDownloaded) {
             Write-Host "No previous reviews.csv release asset found; continuing."
           }
 
@@ -140,9 +165,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view latest-data *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create latest-data --title "Latest data" --notes "Latest cumulative pipeline outputs" --latest=false
+          function Invoke-WithRetry {
+            param(
+              [string]$Name,
+              [scriptblock]$Command,
+              [int]$MaxAttempts = 4,
+              [switch]$Optional
+            )
+
+            for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+              & $Command
+              if ($LASTEXITCODE -eq 0) {
+                return $true
+              }
+              Write-Warning "$Name failed on attempt $attempt of $MaxAttempts with exit code $LASTEXITCODE."
+              if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Seconds ([Math]::Min(90, 15 * $attempt))
+              }
+            }
+
+            if ($Optional) {
+              return $false
+            }
+            throw "$Name failed after $MaxAttempts attempts."
+          }
+
+          $releaseExists = Invoke-WithRetry "View latest-data release" { gh release view latest-data *> $null } -MaxAttempts 4 -Optional
+          if (-not $releaseExists) {
+            Invoke-WithRetry "Create latest-data release" { gh release create latest-data --title "Latest data" --notes "Latest cumulative pipeline outputs" --latest=false } -MaxAttempts 4
           }
 
           $assets = @()
@@ -154,7 +204,7 @@ jobs:
           }
 
           if ($assets.Count -gt 0) {
-            gh release upload latest-data @assets --clobber
+            Invoke-WithRetry "Upload latest-data assets" { gh release upload latest-data @assets --clobber } -MaxAttempts 4
           }
 
       - name: Commit updated targets and state
