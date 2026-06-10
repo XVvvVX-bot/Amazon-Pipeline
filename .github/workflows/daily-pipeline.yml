@@ -95,6 +95,7 @@ jobs:
             }
 
             if ($Optional) {
+              $global:LASTEXITCODE = 0
               return $false
             }
             throw "$Name failed after $MaxAttempts attempts."
@@ -109,6 +110,7 @@ jobs:
           if (-not $csvDownloaded) {
             Write-Host "No previous reviews.csv release asset found; continuing."
           }
+          $global:LASTEXITCODE = 0
 
       - name: Run tests
         run: '& "C:/actions-runner/python312/python.exe" -m pytest -q'
@@ -185,6 +187,7 @@ jobs:
             }
 
             if ($Optional) {
+              $global:LASTEXITCODE = 0
               return $false
             }
             throw "$Name failed after $MaxAttempts attempts."
