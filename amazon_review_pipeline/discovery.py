@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -19,7 +19,7 @@ from amazon_review_pipeline.targets import infer_asin_from_url
 from amazon_review_pipeline.utils import clean_text, sha256_text
 
 
-BESTSELLERS_URL = "https://www.amazon.com/gp/bestsellers/?ref_=nav_em_cs_bestsellers_0_1_1_2"
+BESTSELLERS_URL = "https://www.amazon.com/gp/bestsellers/"
 AMAZON_BASE_URL = "https://www.amazon.com"
 DEFAULT_DISCOVERY_ROOT = Path("data/discovery")
 
@@ -40,6 +40,9 @@ class SeedPage:
     url: str
     label: str
     source_url: str | None = None
+    depth: int = 0
+    page_number: int = 1
+    page_type: str = "root"
 
 
 def fetch_bestsellers_page(url: str, timeout: float) -> requests.Response:
@@ -50,8 +53,9 @@ def fetch_bestsellers_page(url: str, timeout: float) -> requests.Response:
 
 def extract_bestseller_seed_pages(html: str, source_url: str, max_pages: int) -> list[SeedPage]:
     soup = BeautifulSoup(html, "html.parser")
-    seed_pages: list[SeedPage] = [SeedPage(rank=1, url=canonical_bestseller_url(source_url), label="Best Sellers")]
-    seen_urls = {seed_pages[0].url}
+    root_url = canonical_bestseller_url(source_url)
+    seed_pages: list[SeedPage] = [SeedPage(rank=1, url=root_url, label="Best Sellers")]
+    seen_keys = {seed_identity(root_url)}
 
     for anchor in soup.select("a[href]"):
         href = anchor.get("href") or ""
@@ -60,12 +64,24 @@ def extract_bestseller_seed_pages(html: str, source_url: str, max_pages: int) ->
             continue
 
         canonical_url = canonical_bestseller_url(absolute_url)
-        if canonical_url in seen_urls:
+        identity = seed_identity(canonical_url)
+        if identity in seen_keys:
             continue
 
-        seen_urls.add(canonical_url)
+        seen_keys.add(identity)
         label = seed_label(anchor.get_text(" ", strip=True), canonical_url)
-        seed_pages.append(SeedPage(rank=len(seed_pages) + 1, url=canonical_url, label=label, source_url=source_url))
+        hierarchy = bestseller_hierarchy_key(canonical_url)
+        seed_pages.append(
+            SeedPage(
+                rank=len(seed_pages) + 1,
+                url=canonical_url,
+                label=label,
+                source_url=source_url,
+                depth=len(hierarchy),
+                page_number=page_number(canonical_url),
+                page_type="department" if len(hierarchy) == 1 else "subdepartment",
+            )
+        )
         if max_pages and len(seed_pages) >= max_pages:
             break
 
@@ -214,13 +230,36 @@ def canonical_product_url(asin: str) -> str:
 def canonical_bestseller_url(url: str) -> str:
     parsed = urlparse(urljoin(AMAZON_BASE_URL, url))
     parts = [part for part in parsed.path.split("/") if part]
+    query = canonical_bestseller_query(parsed.query)
     if len(parts) >= 3 and parts[0] == "gp" and parts[1] == "bestsellers":
         path = "/" + "/".join(parts[:3])
     elif len(parts) >= 2 and parts[0] == "gp" and parts[1] == "bestsellers":
         path = "/gp/bestsellers"
+    elif "zgbs" in parts:
+        zgbs_index = parts.index("zgbs")
+        kept_parts = parts[:zgbs_index + 1]
+        for part in parts[zgbs_index + 1 :]:
+            if part.startswith("ref="):
+                break
+            kept_parts.append(part)
+        path = "/" + "/".join(kept_parts)
     else:
         path = parsed.path.rstrip("/") or "/gp/bestsellers"
-    return f"{AMAZON_BASE_URL}{path}/"
+    return f"{AMAZON_BASE_URL}{path}/" + (f"?{query}" if query else "")
+
+
+def canonical_bestseller_query(query: str) -> str:
+    params = parse_qs(query, keep_blank_values=False)
+    page_values = params.get("pg")
+    if not page_values:
+        return ""
+    try:
+        page = int(page_values[0])
+    except (TypeError, ValueError):
+        return ""
+    if page <= 1:
+        return ""
+    return urlencode({"pg": str(page)})
 
 
 def is_bestseller_category_url(url: str) -> bool:
@@ -228,7 +267,39 @@ def is_bestseller_category_url(url: str) -> bool:
     if parsed.netloc and parsed.netloc != "www.amazon.com":
         return False
     parts = [part for part in parsed.path.split("/") if part]
-    return len(parts) >= 3 and parts[0] == "gp" and parts[1] == "bestsellers"
+    if len(parts) >= 3 and parts[0] == "gp" and parts[1] == "bestsellers":
+        return True
+    if "zgbs" not in parts:
+        return False
+    hierarchy = bestseller_hierarchy_key(url)
+    return bool(hierarchy)
+
+
+def bestseller_hierarchy_key(url: str) -> tuple[str, ...]:
+    parsed = urlparse(urljoin(AMAZON_BASE_URL, url))
+    parts = [part for part in parsed.path.split("/") if part and not part.startswith("ref=")]
+    if len(parts) >= 3 and parts[0] == "gp" and parts[1] == "bestsellers":
+        return (parts[2],)
+    if "zgbs" in parts:
+        zgbs_index = parts.index("zgbs")
+        return tuple(parts[zgbs_index + 1 :])
+    return ()
+
+
+def seed_identity(url: str) -> tuple[tuple[str, ...], int]:
+    canonical_url = canonical_bestseller_url(url)
+    return bestseller_hierarchy_key(canonical_url), page_number(canonical_url)
+
+
+def page_number(url: str) -> int:
+    parsed = urlparse(urljoin(AMAZON_BASE_URL, url))
+    values = parse_qs(parsed.query).get("pg")
+    if not values:
+        return 1
+    try:
+        return max(1, int(values[0]))
+    except (TypeError, ValueError):
+        return 1
 
 
 def seed_label(anchor_text: str | None, url: str) -> str:
@@ -236,12 +307,19 @@ def seed_label(anchor_text: str | None, url: str) -> str:
     if text and text.lower() != "see more":
         return text[:120]
     parts = [part for part in urlparse(url).path.split("/") if part]
+    hierarchy = bestseller_hierarchy_key(url)
+    if hierarchy:
+        return hierarchy[-1]
     return parts[2] if len(parts) >= 3 else "best_sellers"
 
 
 def discovery_html_name(seed_page: SeedPage) -> str:
     parts = [part for part in urlparse(seed_page.url).path.split("/") if part]
-    slug = "_".join(parts[2:]) or "root"
+    hierarchy = bestseller_hierarchy_key(seed_page.url)
+    slug_parts = list(hierarchy) or parts[2:] or ["root"]
+    slug = "_".join(slug_parts)
+    if seed_page.page_number > 1:
+        slug = f"{slug}_pg{seed_page.page_number}"
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "_", slug).strip("_") or "root"
     return f"{seed_page.rank:02d}_{slug}.html"
 
@@ -263,6 +341,108 @@ def normalize_active_value(value: str) -> str:
     return "true" if value.strip().lower() in {"true", "t", "yes", "y", "1"} else "false"
 
 
+def extract_navigation_seed_pages(html: str, parent_page: SeedPage, max_subdepartment_depth: int) -> list[SeedPage]:
+    if parent_page.page_type == "pagination":
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    parent_key = bestseller_hierarchy_key(parent_page.url)
+    pages: list[SeedPage] = []
+    seen_identities: set[tuple[tuple[str, ...], int]] = set()
+
+    for anchor in soup.select("a[href]"):
+        href = anchor.get("href") or ""
+        absolute_url = urljoin(AMAZON_BASE_URL, href)
+        if not is_bestseller_category_url(absolute_url):
+            continue
+
+        canonical_url = canonical_bestseller_url(absolute_url)
+        if page_number(canonical_url) != 1:
+            continue
+
+        hierarchy = bestseller_hierarchy_key(canonical_url)
+        if not is_navigation_child(parent_key, hierarchy, max_subdepartment_depth):
+            continue
+
+        identity = seed_identity(canonical_url)
+        if identity in seen_identities:
+            continue
+        seen_identities.add(identity)
+
+        pages.append(
+            SeedPage(
+                rank=0,
+                url=canonical_url,
+                label=seed_label(anchor.get_text(" ", strip=True), canonical_url),
+                source_url=parent_page.url,
+                depth=len(hierarchy),
+                page_number=1,
+                page_type="department" if len(hierarchy) == 1 else "subdepartment",
+            )
+        )
+
+    return pages
+
+
+def is_navigation_child(parent_key: tuple[str, ...], hierarchy: tuple[str, ...], max_subdepartment_depth: int) -> bool:
+    if not hierarchy:
+        return False
+    if not parent_key:
+        return len(hierarchy) == 1
+    if len(hierarchy) <= len(parent_key):
+        return False
+    if hierarchy[: len(parent_key)] != parent_key:
+        return False
+    subdepartment_depth = len(hierarchy) - 1
+    return max_subdepartment_depth == 0 or subdepartment_depth <= max_subdepartment_depth
+
+
+def extract_pagination_seed_pages(html: str, parent_page: SeedPage, max_pages_per_seed: int) -> list[SeedPage]:
+    if max_pages_per_seed == 1:
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    parent_key = bestseller_hierarchy_key(parent_page.url)
+    pages: list[SeedPage] = []
+    seen_pages: set[int] = set()
+
+    for anchor in soup.select("a[href]"):
+        href = anchor.get("href") or ""
+        absolute_url = urljoin(AMAZON_BASE_URL, href)
+        if not is_bestseller_category_url(absolute_url):
+            continue
+
+        canonical_url = canonical_bestseller_url(absolute_url)
+        if bestseller_hierarchy_key(canonical_url) != parent_key:
+            continue
+
+        page = page_number(canonical_url)
+        if page <= 1 or page in seen_pages:
+            continue
+
+        seen_pages.add(page)
+        pages.append(
+            SeedPage(
+                rank=0,
+                url=canonical_url,
+                label=f"{parent_page.label} page {page}",
+                source_url=parent_page.url,
+                depth=parent_page.depth,
+                page_number=page,
+                page_type="pagination",
+            )
+        )
+        if max_pages_per_seed and len(pages) >= max_pages_per_seed - 1:
+            break
+
+    return pages
+
+
+def discovery_arg(args: argparse.Namespace, name: str, default: int) -> int:
+    value = getattr(args, name, default)
+    return int(value if value is not None else default)
+
+
 def run_discovery(args: argparse.Namespace) -> dict:
     discovered_at = datetime.now(timezone.utc).date().isoformat()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -275,29 +455,60 @@ def run_discovery(args: argparse.Namespace) -> dict:
 
     root_response = fetch_bestsellers_page(args.seed_url, args.timeout)
     root_html = root_response.content.decode("utf-8", errors="replace")
-    root_blocked = detect_blocked_or_signin(root_html, root_response.status_code)
     root_seed = SeedPage(rank=1, url=canonical_bestseller_url(root_response.url), label="Best Sellers")
     root_html_path = discovery_dir / discovery_html_name(root_seed)
     root_html_path.write_text(root_html, encoding="utf-8")
 
-    seed_pages = [root_seed] if root_blocked else extract_bestseller_seed_pages(root_html, root_response.url, args.max_seed_pages)
+    max_seed_pages = discovery_arg(args, "max_seed_pages", 12)
+    max_departments = discovery_arg(args, "max_departments", 12)
+    max_subdepartment_depth = discovery_arg(args, "max_subdepartment_depth", 1)
+    max_subdepartment_pages = discovery_arg(args, "max_subdepartment_pages", 25)
+    max_pages_per_seed = discovery_arg(args, "max_pages_per_seed", 1)
     max_products_per_page = None if args.max_products_per_page == 0 else args.max_products_per_page
+
+    seed_pages = [root_seed]
+    queued_pages: list[SeedPage] = []
+    seen_seed_identities = {seed_identity(root_seed.url)}
+    discovery_counts = {
+        "departments_enqueued": 0,
+        "subdepartment_pages_enqueued": 0,
+        "pagination_pages_enqueued": 0,
+    }
     page_reports: list[dict] = []
     all_products: list[BestsellerProduct] = []
 
-    for index, seed_page in enumerate(seed_pages):
-        if index == 0:
-            response = root_response
-            html = root_html
-            html_path = root_html_path
-        else:
-            if args.delay > 0:
-                time.sleep(args.delay)
-            response = fetch_bestsellers_page(seed_page.url, args.timeout)
-            html = response.content.decode("utf-8", errors="replace")
-            html_path = discovery_dir / discovery_html_name(seed_page)
-            html_path.write_text(html, encoding="utf-8")
+    def enqueue(seed_page: SeedPage) -> bool:
+        identity = seed_identity(seed_page.url)
+        if identity in seen_seed_identities:
+            return False
+        if max_seed_pages and len(seed_pages) >= max_seed_pages:
+            return False
+        if seed_page.page_type == "department" and max_departments and discovery_counts["departments_enqueued"] >= max_departments:
+            return False
+        if seed_page.page_type == "subdepartment" and max_subdepartment_pages and discovery_counts["subdepartment_pages_enqueued"] >= max_subdepartment_pages:
+            return False
 
+        ranked_page = SeedPage(
+            rank=len(seed_pages) + 1,
+            url=seed_page.url,
+            label=seed_page.label,
+            source_url=seed_page.source_url,
+            depth=seed_page.depth,
+            page_number=seed_page.page_number,
+            page_type=seed_page.page_type,
+        )
+        seen_seed_identities.add(identity)
+        seed_pages.append(ranked_page)
+        queued_pages.append(ranked_page)
+        if ranked_page.page_type == "department":
+            discovery_counts["departments_enqueued"] += 1
+        elif ranked_page.page_type == "subdepartment":
+            discovery_counts["subdepartment_pages_enqueued"] += 1
+        elif ranked_page.page_type == "pagination":
+            discovery_counts["pagination_pages_enqueued"] += 1
+        return True
+
+    def process_seed_page(seed_page: SeedPage, response, html: str, html_path: Path) -> None:
         blocked_or_signin = detect_blocked_or_signin(html, response.status_code)
         products = [] if blocked_or_signin else extract_bestseller_products(html, response.url, max_products_per_page)
         all_products.extend(products)
@@ -305,6 +516,10 @@ def run_discovery(args: argparse.Namespace) -> dict:
             {
                 "rank": seed_page.rank,
                 "label": seed_page.label,
+                "page_type": seed_page.page_type,
+                "depth": seed_page.depth,
+                "page_number": seed_page.page_number,
+                "source_url": seed_page.source_url,
                 "requested_url": seed_page.url,
                 "final_url": response.url,
                 "status_code": response.status_code,
@@ -314,6 +529,26 @@ def run_discovery(args: argparse.Namespace) -> dict:
                 "discovered_products": len(products),
             }
         )
+
+        if blocked_or_signin:
+            return
+
+        for pagination_page in extract_pagination_seed_pages(html, seed_page, max_pages_per_seed):
+            enqueue(pagination_page)
+        for child_page in extract_navigation_seed_pages(html, seed_page, max_subdepartment_depth):
+            enqueue(child_page)
+
+    process_seed_page(root_seed, root_response, root_html, root_html_path)
+
+    while queued_pages:
+        seed_page = queued_pages.pop(0)
+        if args.delay > 0:
+            time.sleep(args.delay)
+        response = fetch_bestsellers_page(seed_page.url, args.timeout)
+        html = response.content.decode("utf-8", errors="replace")
+        html_path = discovery_dir / discovery_html_name(seed_page)
+        html_path.write_text(html, encoding="utf-8")
+        process_seed_page(seed_page, response, html, html_path)
 
     products = dedupe_products(all_products)
     merge_summary = merge_products_into_targets(args.targets, products, active=not args.inactive, discovered_at=discovered_at)
@@ -329,13 +564,18 @@ def run_discovery(args: argparse.Namespace) -> dict:
     report = {
         "run_id": run_id,
         "seed_url": args.seed_url,
-        "max_seed_pages": args.max_seed_pages,
+        "max_seed_pages": max_seed_pages,
+        "max_departments": max_departments,
+        "max_subdepartment_depth": max_subdepartment_depth,
+        "max_subdepartment_pages": max_subdepartment_pages,
+        "max_pages_per_seed": max_pages_per_seed,
         "max_products_per_page": args.max_products_per_page,
         "delay": args.delay,
         "seed_pages_path": str(seed_pages_path),
         "products_path": str(products_path),
         "targets_path": str(args.targets),
         "seed_pages_discovered": len(seed_pages),
+        **discovery_counts,
         "pages_fetched": len(page_reports),
         "blocked_pages": sum(1 for page in page_reports if page["blocked_or_signin"]),
         "discovered_products": len(products),
@@ -353,6 +593,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--url", dest="seed_url", default=argparse.SUPPRESS, help="Compatibility alias for --seed-url.")
     parser.add_argument("--targets", type=Path, default=DEFAULT_TARGETS, help="Target CSV to update.")
     parser.add_argument("--max-seed-pages", type=int, default=12, help="Maximum Best Sellers pages to fetch, including the root page.")
+    parser.add_argument("--max-departments", type=int, default=12, help="Maximum top-level Best Sellers departments to discover. Use 0 for no cap.")
+    parser.add_argument("--max-subdepartment-depth", type=int, default=1, help="Maximum subdepartment levels below each department. Use 0 to recurse to terminal pages.")
+    parser.add_argument("--max-subdepartment-pages", type=int, default=25, help="Maximum subdepartment pages to discover across the run. Use 0 for no cap.")
+    parser.add_argument("--max-pages-per-seed", type=int, default=1, help="Maximum pagination pages per Best Sellers seed page, including page 1. Use 0 for all visible pages.")
     parser.add_argument("--max-products-per-page", type=int, default=0, help="Maximum unique product ASINs to extract per Best Sellers page. Use 0 for all found products.")
     parser.add_argument("--limit", dest="max_products_per_page", type=int, default=argparse.SUPPRESS, help="Compatibility alias for --max-products-per-page.")
     parser.add_argument("--delay", type=float, default=2.0, help="Delay in seconds between discovered Best Sellers page requests.")

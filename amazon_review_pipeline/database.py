@@ -4,6 +4,7 @@ import csv
 import json
 import re
 import sqlite3
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -302,6 +303,7 @@ def generated_parse_report(raw_dir: Path, reviews: list[dict], target_reports: l
 def validate_database(db_path: Path, run_id: str | None = None) -> dict:
     with connect_database(db_path) as connection:
         initialize_database(connection)
+        error_diagnostics = parse_error_diagnostics(connection, run_id)
         return {
             "db_path": str(db_path),
             "run_id": run_id,
@@ -316,6 +318,8 @@ def validate_database(db_path: Path, run_id: str | None = None) -> dict:
             "date_coverage": date_coverage(connection, run_id),
             "targets": target_review_counts(connection, run_id),
             "parse_errors": parse_errors(connection, run_id),
+            "parse_error_summary": error_diagnostics["summary"],
+            "unresolved_parse_errors": error_diagnostics["unresolved_errors"],
         }
 
 
@@ -809,6 +813,174 @@ def parse_errors(connection: sqlite3.Connection, run_id: str | None) -> list[dic
         params,
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+def parse_error_diagnostics(connection: sqlite3.Connection, run_id: str | None) -> dict:
+    errors = parse_errors(connection, run_id)
+    target_ids = sorted({error["target_id"] for error in errors if error.get("target_id")})
+    target_statuses = current_target_statuses(connection, target_ids)
+    detailed_errors = []
+
+    for error in errors:
+        status = target_statuses.get(error.get("target_id") or "", {})
+        resolution_status, resolution_reason = classify_parse_error(error, status)
+        detailed_error = {
+            **error,
+            "resolution_status": resolution_status,
+            "resolution_reason": resolution_reason,
+            "current_review_count": int(status.get("review_count") or 0),
+            "current_non_empty_body_count": int(status.get("non_empty_body_count") or 0),
+            "latest_raw_page": status.get("latest_raw_page"),
+        }
+        detailed_errors.append(detailed_error)
+
+    unresolved_errors = [
+        error for error in detailed_errors if error["resolution_status"] == "currently_unresolved"
+    ]
+    resolved_errors = [
+        error for error in detailed_errors if error["resolution_status"] == "resolved"
+    ]
+    unresolved_target_ids = sorted({error["target_id"] for error in unresolved_errors if error.get("target_id")})
+    resolved_target_ids = sorted({error["target_id"] for error in resolved_errors if error.get("target_id")})
+
+    return {
+        "summary": {
+            "classification_scope": "current_database_state",
+            "total_errors": len(errors),
+            "resolved_errors": len(resolved_errors),
+            "currently_unresolved_errors": len(unresolved_errors),
+            "unique_error_targets": len(target_ids),
+            "unique_resolved_targets": len(resolved_target_ids),
+            "unique_currently_unresolved_targets": len(unresolved_target_ids),
+            "currently_unresolved_targets": unresolved_target_ids,
+            "by_type": dict(Counter(error["error_type"] for error in errors)),
+            "resolved_by_type": dict(Counter(error["error_type"] for error in resolved_errors)),
+            "currently_unresolved_by_type": dict(
+                Counter(error["error_type"] for error in unresolved_errors)
+            ),
+            "resolution_reasons": dict(
+                Counter(error["resolution_reason"] for error in detailed_errors)
+            ),
+        },
+        "unresolved_errors": unresolved_errors,
+    }
+
+
+def current_target_statuses(connection: sqlite3.Connection, target_ids: list[str]) -> dict[str, dict]:
+    if not target_ids:
+        return {}
+
+    placeholders = ",".join("?" for _ in target_ids)
+    statuses = {
+        target_id: {
+            "review_count": 0,
+            "non_empty_body_count": 0,
+            "latest_raw_page": None,
+        }
+        for target_id in target_ids
+    }
+
+    review_rows = connection.execute(
+        f"""
+        SELECT
+            target_id,
+            COUNT(*) AS review_count,
+            SUM(CASE WHEN body IS NOT NULL THEN 1 ELSE 0 END) AS non_empty_body_count
+        FROM reviews
+        WHERE target_id IN ({placeholders})
+        GROUP BY target_id
+        """,
+        tuple(target_ids),
+    ).fetchall()
+    for row in review_rows:
+        statuses[row["target_id"]]["review_count"] = int(row["review_count"] or 0)
+        statuses[row["target_id"]]["non_empty_body_count"] = int(row["non_empty_body_count"] or 0)
+
+    raw_rows = connection.execute(
+        f"""
+        SELECT
+            target_id,
+            run_id,
+            status,
+            blocked_or_signin,
+            blocked_reason,
+            review_section_detected,
+            fetch_method,
+            rendered,
+            fetched_at,
+            error_message
+        FROM raw_pages
+        WHERE target_id IN ({placeholders})
+        ORDER BY target_id, COALESCE(fetched_at, '') DESC, run_id DESC
+        """,
+        tuple(target_ids),
+    ).fetchall()
+    for row in raw_rows:
+        target_status = statuses[row["target_id"]]
+        if target_status["latest_raw_page"] is not None:
+            continue
+        target_status["latest_raw_page"] = {
+            "run_id": row["run_id"],
+            "status": row["status"],
+            "blocked_or_signin": bool(row["blocked_or_signin"]),
+            "blocked_reason": row["blocked_reason"],
+            "review_section_detected": bool(row["review_section_detected"]),
+            "fetch_method": row["fetch_method"],
+            "rendered": bool(row["rendered"]),
+            "fetched_at": row["fetched_at"],
+            "error_message": row["error_message"],
+        }
+
+    return statuses
+
+
+def classify_parse_error(error: dict, target_status: dict) -> tuple[str, str]:
+    error_type = error.get("error_type")
+    review_count = int(target_status.get("review_count") or 0)
+    non_empty_body_count = int(target_status.get("non_empty_body_count") or 0)
+    latest = target_status.get("latest_raw_page")
+
+    if error_type == "missing_review_body":
+        if review_count > 0 and non_empty_body_count == review_count:
+            return "resolved", "target_reviews_now_have_bodies"
+        return "currently_unresolved", unresolved_reason_from_latest(latest)
+
+    if error_type == "no_reviews_found":
+        if review_count > 0:
+            return "resolved", "target_has_loaded_reviews"
+        if latest and latest.get("status") == "fetched" and latest.get("review_section_detected"):
+            return "resolved", "latest_fetch_detected_review_section"
+        return "currently_unresolved", unresolved_reason_from_latest(latest)
+
+    if error_type == "blocked_or_signin":
+        if latest and latest.get("status") == "fetched" and not latest.get("blocked_or_signin"):
+            return "resolved", "latest_fetch_not_blocked"
+        if review_count > 0:
+            return "resolved", "target_has_loaded_reviews"
+        return "currently_unresolved", unresolved_reason_from_latest(latest)
+
+    if error_type == "fetch_error":
+        if latest and latest.get("status") == "fetched" and not latest.get("blocked_or_signin"):
+            return "resolved", "latest_fetch_succeeded"
+        if review_count > 0:
+            return "resolved", "target_has_loaded_reviews"
+        return "currently_unresolved", unresolved_reason_from_latest(latest)
+
+    if review_count > 0:
+        return "resolved", "target_has_loaded_reviews"
+    return "currently_unresolved", unresolved_reason_from_latest(latest)
+
+
+def unresolved_reason_from_latest(latest_raw_page: dict | None) -> str:
+    if not latest_raw_page:
+        return "no_raw_page_recorded"
+    if latest_raw_page.get("blocked_or_signin") or latest_raw_page.get("status") == "blocked":
+        return "latest_fetch_blocked_or_signin"
+    if latest_raw_page.get("status") == "fetch_error":
+        return "latest_fetch_error"
+    if latest_raw_page.get("status") == "fetched" and not latest_raw_page.get("review_section_detected"):
+        return "latest_fetch_has_no_review_section"
+    return "latest_fetch_still_unresolved"
 
 
 def run_scope(run_id: str | None, table_alias: str | None = None) -> tuple[str, tuple]:

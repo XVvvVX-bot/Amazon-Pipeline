@@ -15,6 +15,11 @@ on:
         required: false
         default: false
         type: boolean
+      aggressive_stress_test:
+        description: "Manual-only full Best Sellers discovery and faster refetch stress test"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -119,6 +124,19 @@ jobs:
         run: |
           $staleDays = 7
           $blockedCooldownDays = 3
+          $maxSeedPages = 12
+          $maxDepartments = 12
+          $maxSubdepartmentDepth = 1
+          $maxSubdepartmentPages = 25
+          $maxPagesPerSeed = 1
+          $batchSize = 25
+          $batchCooldownMinMinutes = 5
+          $batchCooldownMaxMinutes = 12
+          $targetDelayMinSeconds = 5
+          $targetDelayMaxSeconds = 15
+          $maxRuntimeMinutes = 300
+          $maxBlockRate = 0.25
+          $maxConsecutiveBlocked = 5
 
           if ("${{ inputs.retry_recent_blocked }}" -eq "true") {
             $blockedCooldownDays = 0
@@ -131,22 +149,46 @@ jobs:
             Write-Host "Manual experiment enabled: refetching every active target."
           }
 
+          if ("${{ inputs.aggressive_stress_test }}" -eq "true") {
+            $staleDays = 0
+            $blockedCooldownDays = 0
+            $maxSeedPages = 0
+            $maxDepartments = 0
+            $maxSubdepartmentDepth = 0
+            $maxSubdepartmentPages = 0
+            $maxPagesPerSeed = 0
+            $batchSize = 50
+            $batchCooldownMinMinutes = 1
+            $batchCooldownMaxMinutes = 3
+            $targetDelayMinSeconds = 1
+            $targetDelayMaxSeconds = 4
+            $maxRuntimeMinutes = 345
+            $maxBlockRate = 0.35
+            $maxConsecutiveBlocked = 10
+            Write-Host "Manual aggressive stress test enabled: unbounded Best Sellers discovery and faster full refetch."
+          }
+
           & "C:/actions-runner/python312/python.exe" amazon_pipeline.py daily `
             --fetch-method playwright `
-            --batch-size 25 `
-            --batch-cooldown-min-minutes 5 `
-            --batch-cooldown-max-minutes 12 `
-            --target-delay-min-seconds 5 `
-            --target-delay-max-seconds 15 `
+            --max-seed-pages $maxSeedPages `
+            --max-departments $maxDepartments `
+            --max-subdepartment-depth $maxSubdepartmentDepth `
+            --max-subdepartment-pages $maxSubdepartmentPages `
+            --max-pages-per-seed $maxPagesPerSeed `
+            --batch-size $batchSize `
+            --batch-cooldown-min-minutes $batchCooldownMinMinutes `
+            --batch-cooldown-max-minutes $batchCooldownMaxMinutes `
+            --target-delay-min-seconds $targetDelayMinSeconds `
+            --target-delay-max-seconds $targetDelayMaxSeconds `
             --adaptive-slow-block-rate 0.05 `
             --adaptive-strong-slow-block-rate 0.15 `
             --adaptive-slowdown-multiplier 2 `
             --adaptive-strong-slowdown-multiplier 3 `
             --stale-days $staleDays `
             --blocked-cooldown-days $blockedCooldownDays `
-            --max-runtime-minutes 300 `
-            --max-block-rate 0.25 `
-            --max-consecutive-blocked 5
+            --max-runtime-minutes $maxRuntimeMinutes `
+            --max-block-rate $maxBlockRate `
+            --max-consecutive-blocked $maxConsecutiveBlocked
 
       - name: Upload daily artifacts
         if: always()

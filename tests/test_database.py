@@ -113,6 +113,16 @@ def test_load_pipeline_run_creates_schema_and_is_idempotent(tmp_path):
     assert report["counts"]["raw_pages"] == 2
     assert report["counts"]["reviews"] == 2
     assert report["counts"]["parse_errors"] == 1
+    assert report["parse_error_summary"]["total_errors"] == 1
+    assert report["parse_error_summary"]["resolved_errors"] == 0
+    assert report["parse_error_summary"]["currently_unresolved_errors"] == 1
+    assert report["parse_error_summary"]["unique_error_targets"] == 1
+    assert report["parse_error_summary"]["unique_resolved_targets"] == 0
+    assert report["parse_error_summary"]["unique_currently_unresolved_targets"] == 1
+    assert report["parse_error_summary"]["currently_unresolved_targets"] == ["amzn_empty"]
+    assert report["parse_error_summary"]["currently_unresolved_by_type"] == {"no_reviews_found": 1}
+    assert report["unresolved_parse_errors"][0]["target_id"] == "amzn_empty"
+    assert report["unresolved_parse_errors"][0]["resolution_reason"] == "latest_fetch_has_no_review_section"
     assert report["quality"]["missing_review_id"] == 1
     assert report["rating_distribution"] == {"4.0": 1, "5.0": 1}
     assert report["date_coverage"]["earliest_review_date"] == "2025-11-14"
@@ -146,6 +156,159 @@ def test_load_pipeline_run_creates_schema_and_is_idempotent(tmp_path):
         "blocked_reason",
         "attempt_count",
     }.issubset(raw_page_columns)
+
+
+def test_validate_database_classifies_resolved_and_unresolved_parse_errors(tmp_path):
+    db_path = tmp_path / "reviews.sqlite"
+
+    run1_raw = tmp_path / "raw" / "run-parse-errors-1"
+    run1_parsed = tmp_path / "parsed" / "run-parse-errors-1"
+    run1_raw.mkdir(parents=True)
+    run1_parsed.mkdir(parents=True)
+    write_jsonl(
+        run1_raw / "fetch_metadata.jsonl",
+        [
+            {
+                "run_id": "run-parse-errors-1",
+                "target_id": "amzn_blocked",
+                "asin": "B0BLOCKED1",
+                "requested_url": "https://www.amazon.com/dp/B0BLOCKED1/",
+                "final_url": "https://www.amazon.com/dp/B0BLOCKED1/",
+                "status": "blocked",
+                "status_code": 200,
+                "fetched_at": "2026-06-08T19:39:01+00:00",
+                "html_path": "data/raw/run-parse-errors-1/amzn_blocked.html",
+                "content_hash": "blocked-hash",
+                "blocked_or_signin": True,
+                "blocked_reason": "captcha",
+                "review_section_detected": False,
+                "response_bytes": 123,
+                "page_title": "Amazon.com",
+                "product_title": None,
+                "error_message": None,
+                "fetch_method": "playwright",
+                "rendered": True,
+            },
+            {
+                "run_id": "run-parse-errors-1",
+                "target_id": "amzn_empty",
+                "asin": "B0EMPTY001",
+                "requested_url": "https://www.amazon.com/dp/B0EMPTY001/",
+                "final_url": "https://www.amazon.com/dp/B0EMPTY001/",
+                "status": "fetched",
+                "status_code": 200,
+                "fetched_at": "2026-06-08T19:39:02+00:00",
+                "html_path": "data/raw/run-parse-errors-1/amzn_empty.html",
+                "content_hash": "empty-hash",
+                "blocked_or_signin": False,
+                "blocked_reason": None,
+                "review_section_detected": False,
+                "response_bytes": 456,
+                "page_title": "Amazon product",
+                "product_title": "No Review Product",
+                "error_message": None,
+                "fetch_method": "playwright",
+                "rendered": True,
+            },
+        ],
+    )
+    write_jsonl(run1_parsed / "reviews.jsonl", [])
+    (run1_parsed / "parse_report.json").write_text(
+        json.dumps(
+            {
+                "target_count": 2,
+                "review_count": 0,
+                "targets": [
+                    {"target_id": "amzn_blocked", "review_count": 0, "non_empty_bodies": 0},
+                    {"target_id": "amzn_empty", "review_count": 0, "non_empty_bodies": 0},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    load_pipeline_run(db_path, run1_parsed, run1_raw)
+
+    run2_raw = tmp_path / "raw" / "run-parse-errors-2"
+    run2_parsed = tmp_path / "parsed" / "run-parse-errors-2"
+    run2_raw.mkdir(parents=True)
+    run2_parsed.mkdir(parents=True)
+    write_jsonl(
+        run2_raw / "fetch_metadata.jsonl",
+        [
+            {
+                "run_id": "run-parse-errors-2",
+                "target_id": "amzn_blocked",
+                "asin": "B0BLOCKED1",
+                "requested_url": "https://www.amazon.com/dp/B0BLOCKED1/",
+                "final_url": "https://www.amazon.com/dp/B0BLOCKED1/",
+                "status": "fetched",
+                "status_code": 200,
+                "fetched_at": "2026-06-09T19:39:01+00:00",
+                "html_path": "data/raw/run-parse-errors-2/amzn_blocked.html",
+                "content_hash": "resolved-hash",
+                "blocked_or_signin": False,
+                "blocked_reason": None,
+                "review_section_detected": True,
+                "response_bytes": 789,
+                "page_title": "Amazon product",
+                "product_title": "Resolved Product",
+                "error_message": None,
+                "fetch_method": "playwright",
+                "rendered": True,
+            }
+        ],
+    )
+    write_jsonl(
+        run2_parsed / "reviews.jsonl",
+        [
+            {
+                "target_id": "amzn_blocked",
+                "review_id": "R-RESOLVED",
+                "asin": "B0BLOCKED1",
+                "reviewer_name": "Alice",
+                "rating": 5.0,
+                "title": "Resolved",
+                "review_date": "Reviewed in the United States on June 9, 2026",
+                "variation": None,
+                "verified_purchase": True,
+                "helpful_votes": 0,
+                "body": "The retry produced review data.",
+                "source_url": "https://www.amazon.com/dp/B0BLOCKED1/",
+            }
+        ],
+    )
+    (run2_parsed / "parse_report.json").write_text(
+        json.dumps(
+            {
+                "target_count": 1,
+                "review_count": 1,
+                "targets": [{"target_id": "amzn_blocked", "review_count": 1, "non_empty_bodies": 1}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    load_pipeline_run(db_path, run2_parsed, run2_raw)
+
+    report = validate_database(db_path)
+
+    assert report["parse_error_summary"]["total_errors"] == 2
+    assert report["parse_error_summary"]["resolved_errors"] == 1
+    assert report["parse_error_summary"]["currently_unresolved_errors"] == 1
+    assert report["parse_error_summary"]["unique_error_targets"] == 2
+    assert report["parse_error_summary"]["unique_resolved_targets"] == 1
+    assert report["parse_error_summary"]["unique_currently_unresolved_targets"] == 1
+    assert report["parse_error_summary"]["currently_unresolved_targets"] == ["amzn_empty"]
+    assert report["parse_error_summary"]["by_type"] == {
+        "blocked_or_signin": 1,
+        "no_reviews_found": 1,
+    }
+    assert report["parse_error_summary"]["resolved_by_type"] == {"blocked_or_signin": 1}
+    assert report["parse_error_summary"]["currently_unresolved_by_type"] == {"no_reviews_found": 1}
+    assert report["parse_error_summary"]["resolution_reasons"] == {
+        "latest_fetch_not_blocked": 1,
+        "latest_fetch_has_no_review_section": 1,
+    }
+    assert [error["target_id"] for error in report["unresolved_parse_errors"]] == ["amzn_empty"]
 
 
 def test_load_pipeline_run_can_parse_raw_html_without_jsonl(tmp_path):

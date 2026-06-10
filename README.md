@@ -155,7 +155,7 @@ Outputs:
 
 The script does not log in, solve CAPTCHA, use proxies, rotate identities, or bypass access controls. If Amazon returns a sign-in or robot-check page, the response is still saved for inspection and the metadata marks it as `blocked_or_signin`.
 
-`amazon_bestsellers.py` starts from the public Best Sellers root page, discovers one level of category Best Sellers pages, and writes target IDs as `amzn_{asin}` so duplicate product names from different sellers do not collide. Use `--max-seed-pages`, `--max-products-per-page`, and `--delay` to keep discovery bounded.
+`amazon_bestsellers.py` starts from the public Best Sellers root page, discovers Best Sellers department and subdepartment pages, follows visible Best Sellers pagination links, and writes target IDs as `amzn_{asin}` so duplicate product names from different sellers do not collide. Use `--max-seed-pages`, `--max-departments`, `--max-subdepartment-depth`, `--max-subdepartment-pages`, `--max-pages-per-seed`, `--max-products-per-page`, and `--delay` to keep discovery bounded. A value of `0` removes that specific discovery cap.
 
 ## Daily Automation
 
@@ -187,6 +187,7 @@ GitHub Actions:
 - `.github/workflows/daily-pipeline.yml` runs daily on a self-hosted runner labeled `amazon-acquisition` and can also be triggered manually.
 - Manual daily runs include a `retry_recent_blocked` option. Set it to `true` only when testing whether the current Playwright and randomized pacing strategy can recover targets that were previously blocked.
 - Manual daily runs also include a `refetch_everything` option. Set it to `true` only when testing full-refresh behavior, because it makes every active target due immediately.
+- Manual daily runs include an `aggressive_stress_test` option. Set it to `true` only for a one-off stress test; it removes discovery caps, recursively follows Best Sellers subdepartments to terminal pages, follows visible pagination links, and uses faster full-refetch pacing.
 - The daily workflow uses `--fetch-method playwright` because GitHub-hosted/static HTTP fetching produced frequent blocks or pages without parsable review DOM.
 - It downloads the previous `reviews.sqlite` and `reviews.csv` from the `latest-data` GitHub release if available.
 - It uploads raw HTML, parsed reports, discovery outputs, daily reports, and exports as workflow artifacts.
@@ -212,6 +213,16 @@ Full-refetch experiment:
 5. Compare the daily report's `queue.due_targets`, `batch_reports`, `fetch_summary.blocked`, `load_summary.duplicates_skipped`, and `pacing.cooldowns`.
 
 This mode sets stale-days and blocked-cooldown-days to zero for that manual run, so it tests whether the current pacing can handle the entire active target list. It still keeps the normal safety stops for block rate, consecutive blocked pages, and max runtime.
+
+Aggressive stress test:
+
+1. Open **Actions > Daily Amazon Review Pipeline > Run workflow**.
+2. Select `main`.
+3. Enable `aggressive_stress_test`.
+4. Run the workflow from the self-hosted acquisition runner.
+5. Inspect `discovery_report.json` for department/subdepartment/page counts before judging the product fetch results.
+
+This mode sets discovery caps to zero, forces all active targets due, uses 50 targets per batch, uses 1-4 seconds between targets, and uses 1-3 minutes between batches. It still stops cleanly on max runtime, high block rate, or too many consecutive blocked targets.
 
 ### Self-Hosted Acquisition Runner
 
