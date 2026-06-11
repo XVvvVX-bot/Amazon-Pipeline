@@ -152,9 +152,9 @@ jobs:
           max_subdepartment_depth=1
           max_subdepartment_pages=25
           max_pages_per_seed=1
-          batch_size=25
-          batch_cooldown_min_minutes=5
-          batch_cooldown_max_minutes=12
+          batch_size=35
+          batch_cooldown_min_minutes=4
+          batch_cooldown_max_minutes=8
           target_delay_min_seconds=5
           target_delay_max_seconds=15
           max_runtime_minutes=300
