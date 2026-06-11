@@ -47,6 +47,14 @@ Normal daily behavior:
 8. Update the `latest-data` release.
 9. Commit updated target/state files if they changed.
 
+Current scheduled defaults broaden product fetch while keeping discovery bounded:
+
+- 45 targets per batch.
+- 5-12 seconds between product targets.
+- 3-6 minutes between batches.
+- 180-minute runtime cap.
+- Stop early at 20% blocked pages or 5 consecutive blocked targets.
+
 ## Manual Workflow Modes
 
 Open GitHub Actions, choose **Daily Amazon Review Pipeline**, then **Run workflow**.

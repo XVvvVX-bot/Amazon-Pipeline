@@ -152,13 +152,13 @@ jobs:
           max_subdepartment_depth=1
           max_subdepartment_pages=25
           max_pages_per_seed=1
-          batch_size=35
-          batch_cooldown_min_minutes=4
-          batch_cooldown_max_minutes=8
+          batch_size=45
+          batch_cooldown_min_minutes=3
+          batch_cooldown_max_minutes=6
           target_delay_min_seconds=5
-          target_delay_max_seconds=15
-          max_runtime_minutes=300
-          max_block_rate=0.25
+          target_delay_max_seconds=12
+          max_runtime_minutes=180
+          max_block_rate=0.20
           max_consecutive_blocked=5
 
           if [ "${{ inputs.retry_recent_blocked }}" = "true" ]; then

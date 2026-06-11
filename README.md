@@ -134,7 +134,7 @@ The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon
 For self-hosted Amazon acquisition, prefer rendered fetching with randomized pacing:
 
 ```bash
-python amazon_pipeline.py daily --fetch-method playwright --batch-size 25 --target-delay-min-seconds 5 --target-delay-max-seconds 15 --batch-cooldown-min-minutes 5 --batch-cooldown-max-minutes 12
+python amazon_pipeline.py daily --fetch-method playwright --batch-size 45 --target-delay-min-seconds 5 --target-delay-max-seconds 12 --batch-cooldown-min-minutes 3 --batch-cooldown-max-minutes 6 --max-runtime-minutes 180 --max-block-rate 0.20
 ```
 
 Outputs:
@@ -173,13 +173,13 @@ Fetch queue rules:
 
 Batch behavior:
 
-- Default batch size: 50 targets.
+- CLI default batch size: 50 targets when no workflow override is supplied.
 - Default fixed cooldown between batches: 10 minutes when no cooldown range is supplied.
 - Self-hosted acquisition should use randomized per-target delays and randomized batch cooldowns instead of a fixed cadence.
-- The workflow currently uses 25 targets per batch, 5-15 seconds between targets, and 5-12 minutes between batches.
+- The workflow currently uses 45 targets per batch, 5-12 seconds between targets, and 3-6 minutes between batches.
 - If a batch starts showing CAPTCHA blocks, the next cooldown is multiplied by the adaptive slowdown settings.
-- Default runtime cap: 300 minutes.
-- Stop early if block rate reaches 25% or 5 targets are blocked consecutively.
+- Workflow runtime cap: 180 minutes.
+- Stop early if block rate reaches 20% or 5 targets are blocked consecutively.
 
 GitHub Actions:
 
