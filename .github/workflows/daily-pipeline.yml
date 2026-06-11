@@ -284,6 +284,21 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [ "${{ inputs.aggressive_stress_test }}" = "true" ]; then
+            echo "Skipping Git commit for aggressive stress test; large run outputs are preserved in artifacts and the latest-data release."
+            exit 0
+          fi
+
+          max_target_rows=5000
+          target_rows=0
+          if [ -f "data/targets/amazon_products.csv" ]; then
+            target_rows=$(wc -l < data/targets/amazon_products.csv | tr -d ' ')
+          fi
+          if [ "$target_rows" -gt "$max_target_rows" ]; then
+            echo "Skipping Git commit because data/targets/amazon_products.csv has $target_rows rows, above the $max_target_rows row safety limit."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/targets/amazon_products.csv data/state/pipeline_state.json
