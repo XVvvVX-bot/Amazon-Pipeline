@@ -151,6 +151,7 @@ Outputs:
 - Discovery products: `data/discovery/{run_id}/bestseller_products.jsonl`
 - Discovery report: `data/discovery/{run_id}/discovery_report.json`
 - Daily state: `data/state/pipeline_state.json`
+- Daily progress checkpoint: `data/reports/{run_id}/daily_progress.json`
 - Daily report: `data/reports/{run_id}/daily_report.json`
 
 The script does not log in, solve CAPTCHA, use proxies, rotate identities, or bypass access controls. If Amazon returns a sign-in or robot-check page, the response is still saved for inspection and the metadata marks it as `blocked_or_signin`.

@@ -37,8 +37,14 @@ def run_daily_pipeline(
     reports_dir = args.reports_root / daily_run_id
     reports_dir.mkdir(parents=True, exist_ok=True)
 
+    log_progress(f"starting run {daily_run_id}")
     state = load_pipeline_state(args.state)
     discovery_report = run_daily_discovery(args)
+    log_progress(
+        "discovery complete: "
+        f"discovered_products={discovery_report.get('discovered_products', 0)} "
+        f"targets_path={args.targets}"
+    )
     targets = load_targets(args.targets)
     discovered_target_ids = read_discovered_target_ids(discovery_report)
     sync_state_with_targets(state, targets, discovered_target_ids, started_at)
@@ -56,8 +62,25 @@ def run_daily_pipeline(
     batch_reports: list[dict] = []
     stop_reason = "queue_drained"
     cooldown_reports: list[dict] = []
+    log_progress(
+        "queue built: "
+        f"due_targets={len(due_targets)} batch_size={args.batch_size} batches_planned={len(batches)}"
+    )
+    write_progress_report(
+        reports_dir,
+        daily_run_id,
+        started_at,
+        args,
+        discovery_report,
+        due_targets,
+        batches,
+        batch_reports,
+        cooldown_reports,
+        "in_progress",
+    )
 
     for batch_index, batch_targets in enumerate(batches, start=1):
+        log_progress(f"starting batch {batch_index}/{len(batches)} targets={len(batch_targets)}")
         batch_report = run_daily_batch(
             batch_targets=batch_targets,
             batch_index=batch_index,
@@ -70,6 +93,7 @@ def run_daily_pipeline(
         batch_reports.append(batch_report)
         apply_fetch_metadata_to_state(state, batch_report["metadata_rows"])
         save_pipeline_state(args.state, state)
+        log_batch_summary(batch_report)
 
         stop_reason = safety_stop_reason(
             batch_reports,
@@ -79,12 +103,42 @@ def run_daily_pipeline(
             max_consecutive_blocked=args.max_consecutive_blocked,
         )
         if stop_reason != "continue":
+            log_progress(f"stopping after batch {batch_index}: stop_reason={stop_reason}")
+            write_progress_report(
+                reports_dir,
+                daily_run_id,
+                started_at,
+                args,
+                discovery_report,
+                due_targets,
+                batches,
+                batch_reports,
+                cooldown_reports,
+                stop_reason,
+            )
             break
 
         if batch_index < len(batches):
             cooldown = next_batch_cooldown(args, batch_reports, rng)
             batch_report["cooldown_after_batch"] = cooldown
             cooldown_reports.append(cooldown)
+            log_progress(
+                "cooling down after batch "
+                f"{batch_index}: seconds={cooldown['seconds']} reason={cooldown['reason']} "
+                f"latest_block_rate={cooldown['latest_batch_block_rate']}"
+            )
+            write_progress_report(
+                reports_dir,
+                daily_run_id,
+                started_at,
+                args,
+                discovery_report,
+                due_targets,
+                batches,
+                batch_reports,
+                cooldown_reports,
+                "in_progress",
+            )
             if cooldown["seconds"] > 0:
                 sleep_fn(cooldown["seconds"])
 
@@ -94,10 +148,114 @@ def run_daily_pipeline(
 
     export_summary = export_reviews(args.db, args.export_csv, "csv", None)
     completed_at = utc_timestamp()
+    report_path = reports_dir / "daily_report.json"
+    report = build_daily_report(
+        daily_run_id,
+        started_at,
+        args,
+        discovery_report,
+        due_targets,
+        batches,
+        batch_reports,
+        cooldown_reports,
+        stop_reason if stop_reason != "continue" else "queue_drained",
+        completed_at=completed_at,
+        validation_path=validation_path,
+        export_summary=export_summary,
+        report_path=report_path,
+        partial=False,
+    )
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_progress_report(
+        reports_dir,
+        daily_run_id,
+        started_at,
+        args,
+        discovery_report,
+        due_targets,
+        batches,
+        batch_reports,
+        cooldown_reports,
+        stop_reason if stop_reason != "continue" else "queue_drained",
+        partial=False,
+    )
+    save_pipeline_state(args.state, state)
+    log_progress(f"completed run {daily_run_id}: stop_reason={report['stop_reason']} report_path={report_path}")
+    return report
+
+
+def log_progress(message: str) -> None:
+    print(f"[daily] {utc_timestamp()} {message}", flush=True)
+
+
+def log_batch_summary(batch_report: dict) -> None:
+    fetch_summary = batch_report["fetch_summary"]
+    parse_summary = batch_report["parse_summary"]
+    load_summary = batch_report["load_summary"]
+    log_progress(
+        "completed batch "
+        f"{batch_report['batch_index']}: "
+        f"fetched={fetch_summary['fetched']} "
+        f"blocked={fetch_summary['blocked']} "
+        f"fetch_errors={fetch_summary['fetch_errors']} "
+        f"review_sections={fetch_summary['review_sections_detected']} "
+        f"reviews_parsed={parse_summary['review_count']} "
+        f"reviews_inserted={load_summary.get('reviews_inserted', 0)}"
+    )
+
+
+def write_progress_report(
+    reports_dir: Path,
+    daily_run_id: str,
+    started_at: str,
+    args: argparse.Namespace,
+    discovery_report: dict,
+    due_targets: list[Target],
+    batches: list[list[Target]],
+    batch_reports: list[dict],
+    cooldown_reports: list[dict],
+    stop_reason: str,
+    partial: bool = True,
+) -> Path:
+    progress_path = reports_dir / "daily_progress.json"
+    report = build_daily_report(
+        daily_run_id,
+        started_at,
+        args,
+        discovery_report,
+        due_targets,
+        batches,
+        batch_reports,
+        cooldown_reports,
+        stop_reason,
+        partial=partial,
+        report_path=progress_path,
+    )
+    progress_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return progress_path
+
+
+def build_daily_report(
+    daily_run_id: str,
+    started_at: str,
+    args: argparse.Namespace,
+    discovery_report: dict,
+    due_targets: list[Target],
+    batches: list[list[Target]],
+    batch_reports: list[dict],
+    cooldown_reports: list[dict],
+    stop_reason: str,
+    completed_at: str | None = None,
+    validation_path: Path | None = None,
+    export_summary: dict | None = None,
+    report_path: Path | None = None,
+    partial: bool = False,
+) -> dict:
     report = {
         "daily_run_id": daily_run_id,
         "started_at": started_at,
-        "completed_at": completed_at,
+        "updated_at": utc_timestamp(),
+        "partial": partial,
         "targets_path": str(args.targets),
         "state_path": str(args.state),
         "discovery_report": discovery_report,
@@ -123,15 +281,17 @@ def run_daily_pipeline(
             "adaptive_strong_slowdown_multiplier": getattr(args, "adaptive_strong_slowdown_multiplier", 3.0),
             "cooldowns": cooldown_reports,
         },
-        "stop_reason": stop_reason if stop_reason != "continue" else "queue_drained",
+        "stop_reason": stop_reason,
         "batch_reports": strip_batch_metadata(batch_reports),
-        "validation_report_path": str(validation_path),
-        "export_summary": export_summary,
     }
-    report_path = reports_dir / "daily_report.json"
-    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    report["report_path"] = str(report_path)
-    save_pipeline_state(args.state, state)
+    if completed_at:
+        report["completed_at"] = completed_at
+    if validation_path:
+        report["validation_report_path"] = str(validation_path)
+    if export_summary is not None:
+        report["export_summary"] = export_summary
+    if report_path:
+        report["report_path"] = str(report_path)
     return report
 
 

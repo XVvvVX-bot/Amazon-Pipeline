@@ -325,6 +325,11 @@ def test_daily_pipeline_drains_batches_with_cooldown_and_loads_reviews(tmp_path,
     assert report["batch_reports"][0]["fetch_summary"]["fetch_methods"] == {"auto": 1}
     assert sleep_calls == [600]
     assert Path(report["report_path"]).exists()
+    progress_path = Path(report["report_path"]).with_name("daily_progress.json")
+    assert progress_path.exists()
+    progress = json.loads(progress_path.read_text(encoding="utf-8"))
+    assert progress["partial"] is False
+    assert progress["queue"]["batches_completed"] == 2
     assert state_path.exists()
     assert (tmp_path / "exports" / "reviews.csv").exists()
     with sqlite3.connect(tmp_path / "reviews.sqlite") as connection:

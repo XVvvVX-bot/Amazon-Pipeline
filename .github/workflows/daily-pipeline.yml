@@ -214,7 +214,7 @@ jobs:
             --max-consecutive-blocked "$max_consecutive_blocked"
 
       - name: Upload daily artifacts
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: daily-pipeline-${{ github.run_id }}
