@@ -26,6 +26,7 @@ artifact_inspection/
 !data/
 !data/targets/
 !data/targets/amazon_products.csv
+!data/targets/steam_apps.csv
 !data/state/
 !data/state/pipeline_state.json
 

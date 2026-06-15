@@ -1,16 +1,25 @@
-# Amazon Top Reviews Pipeline
+# Review Acquisition Pipeline
 
-This folder contains a staged pipeline that reads Amazon product URLs from a CSV target list, fetches raw product HTML, and extracts embedded top-review sections without filtering by review country.
+This repository now uses Steam as the primary live review source because Steam exposes public, cursor-paginated full review text through `store.steampowered.com/appreviews/{app_id}`. The previous Amazon top-review pipeline remains as a deprecated manual experiment for historical comparison.
 
 ## Install
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+Playwright is only needed for the deprecated Amazon workflow:
+
+```bash
 python -m playwright install chromium
 ```
 
 ## Project Layout
 
+- `steam_review_pipeline/`: primary Steam review pipeline package.
+- `steam_pipeline.py`: thin CLI wrapper for the Steam pipeline.
+- `data/targets/steam_apps.csv`: curated Steam app targets.
+- `.github/workflows/steam-daily-pipeline.yml`: scheduled Steam acquisition workflow.
 - `amazon_review_pipeline/config.py`: shared paths, CSV schema, request headers, and block markers.
 - `amazon_review_pipeline/models.py`: dataclasses used across the pipeline.
 - `amazon_review_pipeline/targets.py`: target CSV loading, boolean parsing, and ASIN inference.
@@ -22,11 +31,18 @@ python -m playwright install chromium
 - `amazon_review_pipeline/commands.py`: fetch, parse, and run workflow orchestration.
 - `amazon_review_pipeline/cli.py`: command-line argument parsing for `amazon_pipeline.py`.
 - `amazon_review_pipeline/discovery.py`: Amazon Best Sellers discovery and target CSV merging.
-- `amazon_pipeline.py` and `amazon_bestsellers.py`: thin compatibility wrappers.
+- `amazon_pipeline.py` and `amazon_bestsellers.py`: deprecated Amazon compatibility wrappers.
 
 ## Target List
 
-Targets live in `data/targets/amazon_products.csv` with these columns:
+Primary Steam targets live in `data/targets/steam_apps.csv` with these columns:
+
+- `app_id`
+- `app_name`
+- `active`
+- `notes`
+
+Deprecated Amazon targets live in `data/targets/amazon_products.csv` with these columns:
 
 - `target_id`
 - `url`
@@ -36,7 +52,66 @@ Targets live in `data/targets/amazon_products.csv` with these columns:
 - `active`
 - `notes`
 
-## Run The Staged Pipeline
+## Run The Steam Pipeline
+
+Run the daily Steam pipeline locally:
+
+```bash
+python steam_pipeline.py daily
+```
+
+By default this uses:
+
+- `review_filter=updated` for daily incremental collection.
+- `language=english`.
+- `purchase_type=all`.
+- `review_type=all`.
+- `num_per_page=100`.
+- `max_pages_per_app=50`.
+
+Run an initial public backfill against active Steam targets:
+
+```bash
+python steam_pipeline.py daily --review-filter recent --max-pages-per-app 0
+```
+
+Fetch only raw Steam review JSON pages:
+
+```bash
+python steam_pipeline.py fetch --targets data/targets/steam_apps.csv --review-filter updated --max-pages-per-app 2
+```
+
+Load a fetched Steam run into SQLite:
+
+```bash
+python steam_pipeline.py load --raw-dir data/raw/steam/20260615T182053Z_9108e1 --db data/steam_reviews.sqlite
+```
+
+Validate the Steam database:
+
+```bash
+python steam_pipeline.py validate --db data/steam_reviews.sqlite
+```
+
+Export Steam reviews:
+
+```bash
+python steam_pipeline.py export --db data/steam_reviews.sqlite --format csv --output data/exports/steam_reviews.csv
+```
+
+Steam outputs:
+
+- Sanitized raw JSON: `data/raw/steam/{run_id}/app_{app_id}_page_{page}.json`
+- Page metadata: `data/raw/steam/{run_id}/review_pages.jsonl`
+- Fetch report: `data/raw/steam/{run_id}/fetch_report.json`
+- SQLite database: `data/steam_reviews.sqlite`
+- CSV export: `data/exports/steam_reviews.csv`
+- Validation report: `data/reports/steam/{run_id}/validation_report.json`
+- Daily report: `data/reports/steam/{run_id}/daily_report.json`
+
+Steam raw JSON is sanitized before storage to remove raw Steam user IDs. Normalized review identity uses `recommendationid`.
+
+## Deprecated Amazon Pipeline
 
 Discover Amazon Best Sellers category pages automatically, extract product URLs, and merge unique ASIN targets into the target list:
 
@@ -123,13 +198,13 @@ Export only one loaded run:
 python amazon_pipeline.py export --db data/reviews.sqlite --run-id 20260608T223058Z_2aaa75 --format csv --output data/exports/reviews_20260608T223058Z_2aaa75.csv
 ```
 
-Run the daily automated pipeline:
+Run the deprecated Amazon daily pipeline manually:
 
 ```bash
 python amazon_pipeline.py daily
 ```
 
-The daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in controlled batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
+The Amazon daily command discovers new Best Sellers ASINs, updates `data/targets/amazon_products.csv`, builds an incremental fetch queue, fetches due targets in controlled batches, parses and loads each batch, validates the database, exports `data/exports/reviews.csv`, and updates `data/state/pipeline_state.json`.
 
 For self-hosted Amazon acquisition, prefer rendered fetching with randomized pacing:
 
@@ -160,7 +235,16 @@ The script does not log in, solve CAPTCHA, use proxies, rotate identities, or by
 
 ## Daily Automation
 
-The daily automation uses an incremental queue instead of manually choosing a fetch range.
+The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml`. It runs on `ubuntu-latest`, downloads prior cumulative Steam outputs from the `latest-steam-data` release, runs tests, fetches Steam review pages, loads/validates/exports SQLite and CSV outputs, uploads artifacts, and updates the release.
+
+Manual Steam workflow options:
+
+- `full_backfill`: uses `filter=recent` and removes the page cap.
+- `max_pages_per_app`: defaults to `50`; set to `0` for no cap.
+
+Deprecated Amazon automation is manual-only in `.github/workflows/daily-pipeline.yml`.
+
+The deprecated Amazon automation uses an incremental queue instead of manually choosing a fetch range.
 
 Fetch queue rules:
 
@@ -185,7 +269,8 @@ Batch behavior:
 GitHub Actions:
 
 - `.github/workflows/ci.yml` runs tests on GitHub-hosted runners for code changes.
-- `.github/workflows/daily-pipeline.yml` runs daily on a self-hosted runner labeled `amazon-acquisition` and can also be triggered manually.
+- `.github/workflows/steam-daily-pipeline.yml` runs daily on GitHub-hosted `ubuntu-latest`.
+- `.github/workflows/daily-pipeline.yml` is the manual-only deprecated Amazon workflow on a self-hosted runner labeled `amazon-acquisition`.
 - Manual daily runs include a `retry_recent_blocked` option. Set it to `true` only when testing whether the current Playwright and randomized pacing strategy can recover targets that were previously blocked.
 - Manual daily runs also include a `refetch_everything` option. Set it to `true` only when testing full-refresh behavior, because it makes every active target due immediately.
 - Manual daily runs include an `aggressive_stress_test` option. Set it to `true` only for a one-off stress test; it removes discovery caps, recursively follows Best Sellers subdepartments to terminal pages, follows visible pagination links, and uses faster full-refetch pacing.
@@ -256,7 +341,16 @@ Company-VM migration:
 
 The acquisition runner still uses a clean browser context. Do not copy personal Amazon cookies, login sessions, CAPTCHA tokens, proxy credentials, or browser profiles into the runner.
 
-## SQLite Schema
+## Steam SQLite Schema
+
+- `steam_runs`: one row per loaded Steam run.
+- `steam_apps`: one row per app target.
+- `steam_review_pages`: one row per fetched review-list API page.
+- `steam_reviews`: one row per unique `recommendationid`, with full review text and Steam review metadata.
+
+Steam does not store raw Steam user IDs in normalized SQLite tables or exports.
+
+## Deprecated Amazon SQLite Schema
 
 - `ingestion_runs`: one row per loaded run, keyed by `run_id`.
 - `products`: one row per product target, keyed by `target_id`.

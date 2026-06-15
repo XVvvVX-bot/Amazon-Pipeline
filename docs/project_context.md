@@ -2,13 +2,24 @@
 
 ## Current Requirement
 
-John's current direction is to focus on the Amazon accessibility question. The project needs an evidence-based conclusion on whether Amazon is viable as a recurring live source under ethical constraints. A practical Amazon solution and a well-supported conclusion that Amazon is too restrictive are both acceptable outcomes.
+John's current direction is to pivot away from Amazon because complete full-review coverage is not available through a public, legal, and ethical Amazon path. The project should now prove a recurring live review pipeline against a source that exposes many full text reviews per item.
 
 The work should stay focused on live acquisition, not prepared/static datasets.
 
 ## Current Status
 
-The project has moved beyond manual seed lists:
+Steam is now the primary source:
+
+- `data/targets/steam_apps.csv` seeds 20 high-volume Steam apps.
+- The Steam pipeline fetches public review JSON from `store.steampowered.com/appreviews/{app_id}`.
+- Steam review pagination uses cursors with `num_per_page=100`.
+- Daily runs use `filter=updated`; initial/manual backfills can use `filter=recent`.
+- Raw JSON pages are sanitized before storage to remove raw Steam user IDs.
+- SQLite stores apps, review pages, runs, and full written review rows keyed by `recommendationid`.
+- The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml` on `ubuntu-latest`.
+- Cumulative Steam data is published to the `latest-steam-data` release.
+
+Amazon remains as a deprecated experiment:
 
 - Best Sellers discovery starts from the public Amazon Best Sellers root page.
 - Discovery can expand through department and subdepartment Best Sellers navigation.
@@ -20,6 +31,7 @@ The project has moved beyond manual seed lists:
 - SQLite stores products, raw pages, ingestion runs, reviews, and parse errors.
 - CSV export and validation reports are generated after acquisition.
 - The workflow publishes artifacts and updates the `latest-data` release.
+- The Amazon workflow is manual-only and preserved for historical comparison.
 
 ## Why Self-Hosted Acquisition Exists
 
@@ -39,15 +51,36 @@ The next product decision is whether to prioritize:
 
 ## Current Open Questions
 
-- Is Amazon stable enough for recurring live acquisition across multiple days?
-- What block rate is acceptable for this project?
-- Is top-review-only coverage sufficient for the first module?
-- If deeper review coverage is required, can review pagination be accessed ethically and reliably?
-- Should the next milestone focus on stronger monitoring, deeper coverage, or downstream analysis?
+- How many Steam pages per app should the normal scheduled run fetch?
+- How quickly does `filter=updated` refresh old recommendation IDs?
+- Should target discovery expand beyond the curated 20-app seed list?
+- When should the deprecated Amazon workflow be archived entirely?
 
 ## Reports To Inspect After Each Run
 
-Inspect these files from the workflow artifact or local `data/` folder:
+For Steam, inspect these files from the workflow artifact or local `data/` folder:
+
+- `data/reports/steam/{run_id}/daily_report.json`
+- `data/reports/steam/{run_id}/validation_report.json`
+- `data/raw/steam/{run_id}/fetch_report.json`
+- `data/raw/steam/{run_id}/review_pages.jsonl`
+- `data/steam_reviews.sqlite`
+- `data/exports/steam_reviews.csv`
+
+The most important fields are:
+
+- `fetch_summary.page_count`
+- `fetch_summary.reviews_seen`
+- `fetch_summary.fetch_errors`
+- `fetch_summary.rate_limited_pages`
+- `fetch_summary.capped_apps`
+- `load_summary.reviews_inserted`
+- `load_summary.reviews_updated`
+- `load_summary.duplicates_skipped`
+- `export_summary.review_count`
+- `validation_report.quality`
+
+For deprecated Amazon runs, inspect:
 
 - `data/reports/{run_id}/daily_report.json`
 - `data/discovery/{run_id}/discovery_report.json`
@@ -69,19 +102,18 @@ The most important fields are:
 - `export_summary.review_count`
 - `validation_report.parse_error_summary`
 
-## Evidence Needed For Amazon Viability
+## Evidence Needed For Source Viability
 
-Before claiming Amazon is viable, collect evidence across at least one full stress run and at least one normal scheduled or incremental run:
+Before claiming Steam is viable, collect evidence across at least one manual backfill-style smoke run and at least one normal scheduled incremental run:
 
-- discovered product count,
-- fetched product count,
-- block/sign-in/CAPTCHA count,
-- fetch error count,
+- target app count,
+- fetched page count,
+- fetch error/rate-limit count,
 - parsed review count,
-- inserted review count,
+- inserted and updated review count,
 - duplicate count,
 - unresolved parse-error count,
 - total runtime,
-- whether the queue drained or hit a safety cap.
+- whether page caps were reached.
 
-If Amazon fails, document the barrier clearly and keep saved raw pages/reports as evidence.
+If Steam fails to provide sufficient review volume or reliability, document the barrier clearly and keep saved sanitized raw pages/reports as evidence.

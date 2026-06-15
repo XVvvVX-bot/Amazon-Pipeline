@@ -19,45 +19,67 @@ The MacBook or future VM should decide how to install local dependencies. The re
 
 ## Persistent Source Of Truth
 
-Small persistent state lives in Git:
+Small persistent Steam targets live in Git:
+
+- `data/targets/steam_apps.csv`
+
+Deprecated Amazon state also lives in Git:
 
 - `data/targets/amazon_products.csv`
 - `data/state/pipeline_state.json`
 
-Cumulative data is published through the GitHub `latest-data` release:
+Cumulative Steam data is published through the GitHub `latest-steam-data` release:
+
+- `steam_reviews.sqlite`
+- `steam_reviews.csv`
+
+Deprecated Amazon data is published through the GitHub `latest-data` release:
 
 - `reviews.sqlite`
 - `reviews.csv`
 
-Large raw HTML, parsed reports, discovery outputs, and run reports are workflow artifacts. They are useful for inspection but should not usually be committed to Git.
+Large raw/sanitized JSON or HTML, parsed reports, discovery outputs, and run reports are workflow artifacts. They are useful for inspection but should not usually be committed to Git.
 
 ## Normal Daily Workflow
 
-GitHub Actions runs `.github/workflows/daily-pipeline.yml` on the self-hosted runner labeled `amazon-acquisition`.
+GitHub Actions runs `.github/workflows/steam-daily-pipeline.yml` on `ubuntu-latest`.
 
 Normal daily behavior:
 
-1. Download latest cumulative `reviews.sqlite` and `reviews.csv` if available.
+1. Download latest cumulative `steam_reviews.sqlite` and `steam_reviews.csv` if available.
 2. Run tests.
-3. Run Best Sellers discovery with conservative bounds.
-4. Build the due-fetch queue.
-5. Fetch due products with Playwright.
-6. Parse, load, validate, and export.
+3. Fetch public Steam review pages for active app targets.
+4. Sanitize raw JSON by removing Steam user IDs before storage.
+5. Load, validate, and export.
 7. Upload artifacts.
-8. Update the `latest-data` release.
-9. Commit updated target/state files if they changed.
+8. Update the `latest-steam-data` release.
 
-Current scheduled defaults broaden product fetch while keeping discovery bounded:
+Current scheduled defaults:
 
-- 45 targets per batch.
-- 5-12 seconds between product targets.
-- 3-6 minutes between batches.
-- 180-minute runtime cap.
-- Stop early at 20% blocked pages or 5 consecutive blocked targets.
+- 20 curated Steam apps.
+- `filter=updated`.
+- `language=english`.
+- `num_per_page=100`.
+- `max_pages_per_app=50`.
+- 1 second between apps.
 
 ## Manual Workflow Modes
 
-Open GitHub Actions, choose **Daily Amazon Review Pipeline**, then **Run workflow**.
+Open GitHub Actions, choose **Daily Steam Review Pipeline**, then **Run workflow**.
+
+`full_backfill`:
+
+- Uses `filter=recent`.
+- Sets `max_pages_per_app=0`, meaning no page cap.
+- Use only for deliberate backfill runs.
+
+`max_pages_per_app`:
+
+- Defaults to `50`.
+- Set to a small number such as `2` for smoke tests.
+- Set to `0` for no cap.
+
+Deprecated Amazon modes live under **Manual Amazon Review Pipeline (Deprecated)**:
 
 `retry_recent_blocked`:
 
@@ -81,19 +103,19 @@ Open GitHub Actions, choose **Daily Amazon Review Pipeline**, then **Run workflo
 
 ## Interpreting Daily Reports
 
-`stop_reason`:
+Steam report fields:
 
-- `queue_drained`: all due targets were processed.
-- `max_runtime_reached`: the safety runtime cap stopped the run. This is not necessarily a failure.
-- `max_block_rate_reached`: Amazon access became too restricted for the configured run.
-- `max_consecutive_blocked_reached`: repeated blocked pages caused an early stop.
+- `fetch_summary.page_count`: review API pages fetched or attempted.
+- `fetch_summary.reviews_seen`: review rows observed before DB idempotency checks.
+- `fetch_summary.fetch_errors`: failed pages after retries.
+- `fetch_summary.rate_limited_pages`: pages that ended with HTTP 429.
+- `fetch_summary.capped_apps`: apps that hit `max_pages_per_app`.
+- `load_summary.reviews_inserted`: new recommendation IDs inserted.
+- `load_summary.reviews_updated`: existing recommendation IDs updated because Steam changed the review.
+- `load_summary.duplicates_skipped`: unchanged recommendation IDs already present.
+- `validation_report.quality`: missing text/language checks.
 
-`queue`:
-
-- `due_targets`: targets selected for this run.
-- `batches_planned`: expected batches.
-- `batches_completed`: completed batches.
-- `remaining_targets`: due targets not processed before a safety stop.
+Deprecated Amazon report fields:
 
 `fetch_summary`:
 
@@ -120,12 +142,18 @@ Open GitHub Actions, choose **Daily Amazon Review Pipeline**, then **Run workflo
 
 ## Recovery Steps
 
-Failed latest-data release download:
+Failed `latest-steam-data` release download:
 
-- If the step logs "No previous reviews.sqlite release asset found; continuing", the run can start from an empty local database.
+- If the step logs "No previous steam_reviews.sqlite release asset found; continuing", the run can start from an empty local database.
 - If GitHub API errors repeat and fail the step, rerun later or inspect GitHub release availability.
 
-Runner offline:
+Steam fetch errors or rate limits:
+
+- Inspect `data/raw/steam/{run_id}/fetch_report.json`.
+- Check `fetch_summary.fetch_errors`, `rate_limited_pages`, and page-level `error_message`.
+- Lower `max_pages_per_app` or add more delay before increasing scope.
+
+Deprecated Amazon runner offline:
 
 - Check GitHub **Settings > Actions > Runners**.
 - Ensure exactly one intended acquisition machine has the `amazon-acquisition` label.
