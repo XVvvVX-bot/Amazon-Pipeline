@@ -12,10 +12,10 @@ Start by reading:
 Then inspect repository health:
 
 ```bash
-python -m pytest -q
+TEST_DATABASE_URL=postgresql:///steam_reviews_test .venv/bin/python -m pytest -q
 ```
 
-The repository should not require machine-specific absolute paths. The scheduled pipeline runs on GitHub-hosted `ubuntu-latest`.
+The repository should not require machine-specific absolute paths. The scheduled acquisition workflow runs on the local Mac self-hosted runner because the development database is local Postgres.
 
 ## Persistent Source Of Truth
 
@@ -23,26 +23,28 @@ Small persistent targets live in Git:
 
 - `data/targets/steam_apps.csv`
 
-Cumulative data is published through the GitHub `latest-steam-data` release:
+Routine cumulative data now lives in local Postgres:
 
-- `steam_reviews.sqlite`
-- `steam_reviews.csv`
+- database URL: `postgresql:///steam_reviews`
+- database name: `steam_reviews`
+
+The old `latest-steam-data` release is only a migration source for the first local Postgres seed.
 
 Large raw JSON, reports, exports, databases, and downloaded artifacts should not usually be committed to Git.
 
 ## Normal Daily Workflow
 
-GitHub Actions runs `.github/workflows/steam-daily-pipeline.yml` on `ubuntu-latest`.
+GitHub Actions runs `.github/workflows/steam-daily-pipeline.yml` on the local Mac self-hosted runner.
 
 Normal daily behavior:
 
-1. Download latest cumulative `steam_reviews.sqlite` and `steam_reviews.csv` if available.
+1. Check or initialize the local Postgres schema.
 2. Run tests.
 3. Fetch public Steam review pages for active app targets.
 4. Sanitize raw JSON before storage.
-5. Load, validate, and export.
-6. Upload workflow artifacts.
-7. Update the `latest-steam-data` release.
+5. Upsert reviews into Postgres by `recommendationid`.
+6. Validate and write daily reports.
+7. Upload raw/report workflow artifacts.
 
 Current scheduled defaults:
 
@@ -54,6 +56,7 @@ Current scheduled defaults:
 - `num_per_page=100`.
 - `max_pages_per_app=50`.
 - 1 second between apps.
+- Delta stop is enabled for `filter=updated`; an app stops early once fetched pages have caught up to the existing Postgres high-water `timestamp_updated`.
 
 ## Manual Workflow Modes
 
@@ -87,10 +90,18 @@ Steam report fields:
 
 ## Recovery Steps
 
-Failed `latest-steam-data` release download:
+Local Postgres unavailable:
 
-- If the step logs `No previous steam_reviews.sqlite release asset found; continuing`, the run can start from an empty local database.
-- If GitHub API errors repeat and fail the step, rerun later or inspect GitHub release availability.
+- Check service status with `brew services list`.
+- Start it with `brew services start postgresql@16`.
+- Confirm connectivity with `/opt/homebrew/opt/postgresql@16/bin/pg_isready -d steam_reviews`.
+- Re-run `.venv/bin/python steam_pipeline.py init-postgres`.
+
+Self-hosted runner unavailable:
+
+- Confirm the runner is online in GitHub repository settings.
+- On the Mac, check `/Users/xvvvvx/github-runners/amazon-pipeline/svc.sh status`.
+- Start the service if needed before the next scheduled run.
 
 Steam fetch errors or rate limits:
 
@@ -111,35 +122,44 @@ Duplicate-heavy run:
 
 Large artifact or release uploads:
 
-- Backfills can generate hundreds of MB in SQLite/CSV assets and several GB when raw JSON is unpacked locally.
+- Backfills can generate several GB of unpacked raw JSON locally.
 - Prefer scheduled incremental mode for routine operation.
-- Use the `latest-steam-data` release for cumulative analyst-facing assets.
+- Use Postgres as the analyst-facing source of truth; export files only for ad hoc handoff.
 
 ## Local Inspection Commands
 
-Count SQLite tables:
+Count Postgres tables:
 
 ```bash
-sqlite3 data/steam_reviews.sqlite \
-  "SELECT 'apps', COUNT(*) FROM steam_apps
-   UNION ALL SELECT 'pages', COUNT(*) FROM steam_review_pages
-   UNION ALL SELECT 'reviews', COUNT(*) FROM steam_reviews
-   UNION ALL SELECT 'runs', COUNT(*) FROM steam_runs;"
+/opt/homebrew/opt/postgresql@16/bin/psql -d steam_reviews -c "
+SELECT 'apps' AS table_name, COUNT(*) FROM steam_apps
+UNION ALL SELECT 'pages', COUNT(*) FROM steam_review_pages
+UNION ALL SELECT 'reviews', COUNT(*) FROM steam_reviews
+UNION ALL SELECT 'runs', COUNT(*) FROM steam_runs;"
 ```
 
 Review counts by app:
 
 ```bash
-sqlite3 data/steam_reviews.sqlite \
-  "SELECT a.app_name, COUNT(*) AS reviews
-   FROM steam_reviews r
-   LEFT JOIN steam_apps a ON a.app_id = r.app_id
-   GROUP BY r.app_id
-   ORDER BY reviews DESC;"
+/opt/homebrew/opt/postgresql@16/bin/psql -d steam_reviews -c "
+SELECT a.app_name, COUNT(*) AS reviews
+FROM steam_reviews r
+LEFT JOIN steam_apps a ON a.app_id = r.app_id
+GROUP BY r.app_id, a.app_name
+ORDER BY reviews DESC;"
 ```
 
 Latest run report:
 
 ```bash
 find data/reports/steam -name daily_report.json -print | sort | tail -1
+```
+
+Seed Postgres from the old SQLite release:
+
+```bash
+gh release download latest-steam-data --pattern steam_reviews.sqlite --dir /tmp/steam-pg-migration --clobber
+.venv/bin/python steam_pipeline.py migrate-sqlite-to-postgres \
+  --sqlite /tmp/steam-pg-migration/steam_reviews.sqlite \
+  --database-url postgresql:///steam_reviews
 ```

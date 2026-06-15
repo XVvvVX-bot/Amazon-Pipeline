@@ -4,7 +4,7 @@ Read this file before making changes in this repository.
 
 ## Project Objective
 
-This project is a live Steam review acquisition pipeline. It collects public, structured review JSON from `store.steampowered.com/appreviews/{app_id}`, normalizes full written review rows, stores them in SQLite, exports CSV, and publishes daily artifacts through GitHub Actions.
+This project is a live Steam review acquisition pipeline. It collects public, structured review JSON from `store.steampowered.com/appreviews/{app_id}`, normalizes full written review rows, stores them in Postgres, and publishes per-run raw/report artifacts through GitHub Actions.
 
 ## Ethical Boundaries
 
@@ -16,7 +16,7 @@ Keep acquisition work inside these boundaries:
 - Do not solve, bypass, or automate around access controls.
 - Do not use proxy rotation or identity rotation.
 - Do not use hidden APIs or anti-bot evasion.
-- Do not store raw Steam user IDs in normalized SQLite tables or exports; Steam review identity is `recommendationid`.
+- Do not store raw Steam user IDs in normalized Postgres tables or exports; Steam review identity is `recommendationid`.
 - Keep raw artifacts sanitized so reviewer identity metadata is not retained unnecessarily.
 
 ## Architecture
@@ -27,49 +27,48 @@ The pipeline is staged:
 2. Fetch public Steam review JSON pages with cursor pagination.
 3. Save sanitized raw JSON pages and page metadata.
 4. Normalize full written review rows.
-5. Load normalized rows into SQLite.
+5. Upsert normalized rows into Postgres by `recommendationid`.
 6. Validate database quality.
-7. Export cumulative reviews to CSV.
-8. Publish workflow artifacts and `latest-steam-data` release assets from GitHub Actions.
+7. Publish raw/report workflow artifacts from GitHub Actions.
 
-The scheduled workflow runs on GitHub-hosted `ubuntu-latest`; no local runner or browser automation is required.
+The scheduled workflow runs on the local Mac self-hosted runner and uses local Postgres by default. No browser automation is required.
 
 ## Core Commands
 
 Run tests:
 
 ```bash
-python -m pytest -q
+TEST_DATABASE_URL=postgresql:///steam_reviews_test .venv/bin/python -m pytest -q
 ```
 
 Run daily acquisition locally:
 
 ```bash
-python steam_pipeline.py daily
+.venv/bin/python steam_pipeline.py daily
 ```
 
 Run a full public backfill:
 
 ```bash
-python steam_pipeline.py daily --review-filter recent --max-pages-per-app 0
+.venv/bin/python steam_pipeline.py daily --review-filter recent --max-pages-per-app 0
 ```
 
-Validate the SQLite database:
+Validate the Postgres database:
 
 ```bash
-python steam_pipeline.py validate --db data/steam_reviews.sqlite
+.venv/bin/python steam_pipeline.py validate-postgres
 ```
 
-Export reviews:
+Export reviews only for ad hoc analyst extracts:
 
 ```bash
-python steam_pipeline.py export --db data/steam_reviews.sqlite --format csv --output data/exports/steam_reviews.csv
+.venv/bin/python steam_pipeline.py export-postgres --format jsonl --output /tmp/steam_reviews.jsonl
 ```
 
 ## Rules For Future Agents
 
 - Inspect recent reports before changing acquisition strategy.
-- Preserve the staged pipeline boundaries: target selection, fetch, load, validate, export.
+- Preserve the staged pipeline boundaries: target selection, fetch, load, validate, report.
 - Keep live network calls out of the test suite; use fixtures and fake sessions.
 - Do not introduce a reviewer/user table. The review is the primary unit of data.
 - Avoid hardcoded local machine paths in code or workflows.

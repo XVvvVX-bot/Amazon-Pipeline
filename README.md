@@ -5,12 +5,25 @@ This repository runs a live Steam review acquisition pipeline. Steam exposes pub
 ## Install
 
 ```bash
-python -m pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 ```
+
+This development setup uses local Postgres as the durable database:
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+/opt/homebrew/opt/postgresql@16/bin/createdb steam_reviews
+/opt/homebrew/opt/postgresql@16/bin/createdb steam_reviews_test
+.venv/bin/python steam_pipeline.py init-postgres --database-url postgresql:///steam_reviews
+```
+
+Skip the `createdb` commands if those databases already exist.
 
 ## Project Layout
 
-- `steam_review_pipeline/`: target loading, API fetching, SQLite loading, validation, export, and daily orchestration.
+- `steam_review_pipeline/`: target loading, API fetching, Postgres loading, validation, optional export, and daily orchestration.
 - `steam_pipeline.py`: thin CLI wrapper for the Steam pipeline.
 - `data/targets/steam_apps.csv`: curated Steam app target list.
 - `.github/workflows/steam-daily-pipeline.yml`: scheduled and manual Steam acquisition workflow.
@@ -34,7 +47,7 @@ Only rows with `active=true` are fetched.
 Run the normal incremental pipeline:
 
 ```bash
-python steam_pipeline.py daily
+.venv/bin/python steam_pipeline.py daily
 ```
 
 Default behavior:
@@ -49,31 +62,31 @@ Default behavior:
 Run a full public backfill against active targets:
 
 ```bash
-python steam_pipeline.py daily --review-filter recent --max-pages-per-app 0
+.venv/bin/python steam_pipeline.py daily --review-filter recent --max-pages-per-app 0
 ```
 
 Fetch only raw Steam review JSON pages:
 
 ```bash
-python steam_pipeline.py fetch --targets data/targets/steam_apps.csv --review-filter updated --max-pages-per-app 2
+.venv/bin/python steam_pipeline.py fetch --targets data/targets/steam_apps.csv --review-filter updated --max-pages-per-app 2
 ```
 
-Load a fetched run into SQLite:
+Load a fetched run into Postgres:
 
 ```bash
-python steam_pipeline.py load --raw-dir data/raw/steam/20260615T182053Z_9108e1 --db data/steam_reviews.sqlite
+.venv/bin/python steam_pipeline.py load-postgres --raw-dir data/raw/steam/20260615T182053Z_9108e1
 ```
 
 Validate the Steam database:
 
 ```bash
-python steam_pipeline.py validate --db data/steam_reviews.sqlite
+.venv/bin/python steam_pipeline.py validate-postgres
 ```
 
-Export Steam reviews:
+Export Steam reviews only when an analyst needs a file extract:
 
 ```bash
-python steam_pipeline.py export --db data/steam_reviews.sqlite --format csv --output data/exports/steam_reviews.csv
+.venv/bin/python steam_pipeline.py export-postgres --format jsonl --output /tmp/steam_reviews.jsonl
 ```
 
 ## Outputs
@@ -81,38 +94,40 @@ python steam_pipeline.py export --db data/steam_reviews.sqlite --format csv --ou
 - Sanitized raw JSON: `data/raw/steam/{run_id}/app_{app_id}_page_{page}.json`
 - Page metadata: `data/raw/steam/{run_id}/review_pages.jsonl`
 - Fetch report: `data/raw/steam/{run_id}/fetch_report.json`
-- SQLite database: `data/steam_reviews.sqlite`
-- CSV export: `data/exports/steam_reviews.csv`
+- Durable database: local Postgres database `steam_reviews`
 - Validation report: `data/reports/steam/{run_id}/validation_report.json`
 - Daily report: `data/reports/steam/{run_id}/daily_report.json`
 
-Raw JSON is sanitized before storage. The normalized SQLite database and CSV export do not store Steam user IDs; review identity is `recommendationid`.
+Raw JSON is sanitized before storage. The normalized Postgres tables do not store Steam user IDs; review identity is `recommendationid`.
 
 ## Daily Automation
 
-The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml`. It runs on GitHub-hosted `ubuntu-latest`.
+The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml`. It runs on the local Mac self-hosted runner and writes to local Postgres by default with `postgresql:///steam_reviews`.
 
 Workflow behavior:
 
-1. Download prior cumulative `steam_reviews.sqlite` and `steam_reviews.csv` from the `latest-steam-data` release if available.
+1. Check that the local Postgres schema exists.
 2. Run tests.
 3. Fetch public Steam review pages for active app targets.
 4. Save sanitized raw JSON and page metadata.
-5. Load, validate, and export SQLite/CSV outputs.
-6. Upload workflow artifacts.
-7. Update the `latest-steam-data` release.
+5. Upsert reviews into Postgres by `recommendationid`.
+6. Validate the database and write reports.
+7. Upload raw/report workflow artifacts for the run.
 
 Manual workflow options:
 
 - `full_backfill`: uses `filter=recent` and removes the page cap.
 - `max_pages_per_app`: defaults to `50`; set to `0` for no cap.
 
-## SQLite Schema
+Daily runs use `filter=updated` and stop early for an app once fetched pages have caught up to that app's current Postgres high-water `timestamp_updated`.
+
+## Postgres Schema
 
 - `steam_runs`: one row per loaded Steam run.
 - `steam_apps`: one row per app target.
 - `steam_review_pages`: one row per fetched review-list API page.
 - `steam_reviews`: one row per unique `recommendationid`, with full review text and Steam review metadata.
+- `steam_review_changes`: one row per inserted or updated review seen in a run.
 
 Example review counts by app:
 
@@ -120,7 +135,7 @@ Example review counts by app:
 SELECT a.app_name, COUNT(*) AS review_count
 FROM steam_reviews r
 LEFT JOIN steam_apps a ON a.app_id = r.app_id
-GROUP BY r.app_id
+GROUP BY r.app_id, a.app_name
 ORDER BY review_count DESC;
 ```
 
@@ -146,5 +161,16 @@ LIMIT 25;
 
 ```bash
 git diff --check
-python -m pytest -q
+TEST_DATABASE_URL=postgresql:///steam_reviews_test .venv/bin/python -m pytest -q
+```
+
+## Migrating The Previous SQLite Snapshot
+
+If you need to seed a fresh local Postgres database from the old release asset:
+
+```bash
+gh release download latest-steam-data --pattern steam_reviews.sqlite --dir /tmp/steam-pg-migration --clobber
+.venv/bin/python steam_pipeline.py migrate-sqlite-to-postgres \
+  --sqlite /tmp/steam-pg-migration/steam_reviews.sqlite \
+  --database-url postgresql:///steam_reviews
 ```

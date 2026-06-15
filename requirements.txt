@@ -1,2 +1,3 @@
+psycopg[binary]>=3.2
 pytest>=8.0
 requests>=2.31

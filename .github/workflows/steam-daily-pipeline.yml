@@ -17,7 +17,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: daily-steam-review-pipeline
@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   daily:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 360
 
     steps:
@@ -40,54 +40,20 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Download latest Steam cumulative data
+      - name: Check local Postgres
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DATABASE_URL: ${{ secrets.STEAM_DATABASE_URL }}
         run: |
           set -euo pipefail
-
-          run_with_retry() {
-            local name="$1"
-            local max_attempts="$2"
-            local optional="$3"
-            shift 3
-
-            local attempt
-            local status
-            for attempt in $(seq 1 "$max_attempts"); do
-              set +e
-              "$@"
-              status=$?
-              set -e
-              if [ "$status" -eq 0 ]; then
-                return 0
-              fi
-              echo "WARNING: $name failed on attempt $attempt of $max_attempts with exit code $status." >&2
-              if [ "$attempt" -lt "$max_attempts" ]; then
-                sleep $(( attempt * 10 > 60 ? 60 : attempt * 10 ))
-              fi
-            done
-
-            if [ "$optional" = "true" ]; then
-              return 1
-            fi
-            echo "$name failed after $max_attempts attempts." >&2
-            return "$status"
-          }
-
-          mkdir -p data data/exports
-          if ! run_with_retry "Download steam_reviews.sqlite" 3 true gh release download latest-steam-data --pattern steam_reviews.sqlite --dir data --clobber; then
-            echo "No previous steam_reviews.sqlite release asset found; continuing."
-          fi
-          if ! run_with_retry "Download steam_reviews.csv" 3 true gh release download latest-steam-data --pattern steam_reviews.csv --dir data/exports --clobber; then
-            echo "No previous steam_reviews.csv release asset found; continuing."
-          fi
+          database_url="${DATABASE_URL:-postgresql:///steam_reviews}"
+          python steam_pipeline.py init-postgres --database-url "$database_url"
 
       - name: Run tests
         run: python -m pytest -q
 
       - name: Run daily Steam pipeline
         env:
+          DATABASE_URL: ${{ secrets.STEAM_DATABASE_URL }}
           INPUT_FULL_BACKFILL: ${{ github.event_name == 'workflow_dispatch' && inputs.full_backfill || 'false' }}
           INPUT_MAX_PAGES_PER_APP: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app || '50' }}
         run: |
@@ -95,6 +61,7 @@ jobs:
 
           review_filter="updated"
           max_pages_per_app="$INPUT_MAX_PAGES_PER_APP"
+          database_url="${DATABASE_URL:-postgresql:///steam_reviews}"
           if [ "$INPUT_FULL_BACKFILL" = "true" ]; then
             review_filter="recent"
             max_pages_per_app=0
@@ -102,6 +69,7 @@ jobs:
           fi
 
           python steam_pipeline.py daily \
+            --database-url "$database_url" \
             --review-filter "$review_filter" \
             --max-pages-per-app "$max_pages_per_app" \
             --num-per-page 100 \
@@ -122,57 +90,3 @@ jobs:
           path: |
             data/raw/steam/
             data/reports/steam/
-            data/exports/steam_reviews.csv
-            data/steam_reviews.sqlite
-
-      - name: Update latest-steam-data release
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          run_with_retry() {
-            local name="$1"
-            local max_attempts="$2"
-            local optional="$3"
-            shift 3
-
-            local attempt
-            local status
-            for attempt in $(seq 1 "$max_attempts"); do
-              set +e
-              "$@"
-              status=$?
-              set -e
-              if [ "$status" -eq 0 ]; then
-                return 0
-              fi
-              echo "WARNING: $name failed on attempt $attempt of $max_attempts with exit code $status." >&2
-              if [ "$attempt" -lt "$max_attempts" ]; then
-                sleep $(( attempt * 15 > 90 ? 90 : attempt * 15 ))
-              fi
-            done
-
-            if [ "$optional" = "true" ]; then
-              return 1
-            fi
-            echo "$name failed after $max_attempts attempts." >&2
-            return "$status"
-          }
-
-          if ! run_with_retry "View latest-steam-data release" 4 true gh release view latest-steam-data; then
-            run_with_retry "Create latest-steam-data release" 4 false gh release create latest-steam-data --title "Latest Steam data" --notes "Latest cumulative Steam review pipeline outputs" --latest=false
-          fi
-
-          assets=()
-          if [ -f "data/steam_reviews.sqlite" ]; then
-            assets+=("data/steam_reviews.sqlite")
-          fi
-          if [ -f "data/exports/steam_reviews.csv" ]; then
-            assets+=("data/exports/steam_reviews.csv")
-          fi
-
-          if [ "${#assets[@]}" -gt 0 ]; then
-            run_with_retry "Upload latest-steam-data assets" 4 false gh release upload latest-steam-data "${assets[@]}" --clobber
-          fi

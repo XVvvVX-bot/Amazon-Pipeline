@@ -43,6 +43,8 @@ def fetch_apps(
     request_delay_seconds: float = 0.0,
     max_attempts: int = 3,
     retry_delay_seconds: float = 5.0,
+    high_water_by_app: dict[str, int] | None = None,
+    use_high_water_stop: bool = False,
     session: requests.Session | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> dict:
@@ -64,6 +66,7 @@ def fetch_apps(
             timeout=timeout,
             max_attempts=max_attempts,
             retry_delay_seconds=retry_delay_seconds,
+            high_water_timestamp=(high_water_by_app or {}).get(app.app_id, 0) if use_high_water_stop else None,
             session=session,
             sleep_fn=sleep_fn,
         )
@@ -97,6 +100,7 @@ def fetch_app_reviews(
     timeout: float = 20.0,
     max_attempts: int = 3,
     retry_delay_seconds: float = 5.0,
+    high_water_timestamp: int | None = None,
     session: requests.Session | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> list[dict]:
@@ -139,6 +143,8 @@ def fetch_app_reviews(
             page_number=page_number,
             max_pages_per_app=max_pages_per_app,
         )
+        if terminal_reason is None and high_water_timestamp is not None and page_caught_up(reviews, high_water_timestamp):
+            terminal_reason = "caught_up_to_existing_reviews"
         report = {
             "app_id": app.app_id,
             "app_name": app.app_name,
@@ -317,6 +323,13 @@ def terminal_reason_for_page(
     if next_cursor == previous_cursor:
         return "cursor_not_advancing"
     return None
+
+
+def page_caught_up(reviews: list[dict], high_water_timestamp: int) -> bool:
+    if high_water_timestamp <= 0 or not reviews:
+        return False
+    timestamps = [int(review.get("timestamp_updated") or 0) for review in reviews]
+    return max(timestamps, default=0) <= high_water_timestamp
 
 
 def response_size(payload: dict | None) -> int:

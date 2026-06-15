@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 from steam_review_pipeline.config import (
+    DEFAULT_DATABASE_URL,
     DEFAULT_DB_PATH,
-    DEFAULT_EXPORT_CSV,
     DEFAULT_LANGUAGE,
     DEFAULT_NUM_PER_PAGE,
     DEFAULT_PURCHASE_TYPE,
@@ -17,9 +17,15 @@ from steam_review_pipeline.config import (
     VALID_REVIEW_FILTERS,
 )
 from steam_review_pipeline.daily import run_daily_pipeline
-from steam_review_pipeline.database import export_reviews, load_pipeline_run, validate_database
 from steam_review_pipeline.fetcher import fetch_apps
 from steam_review_pipeline.files import write_json, write_jsonl
+from steam_review_pipeline.postgres_database import (
+    export_reviews_postgres,
+    initialize_postgres,
+    mask_database_url,
+    migrate_sqlite_to_postgres,
+    validate_postgres,
+)
 from steam_review_pipeline.targets import load_targets
 from steam_review_pipeline.utils import make_run_id
 
@@ -32,30 +38,40 @@ def build_parser() -> argparse.ArgumentParser:
     add_fetch_arguments(fetch)
     fetch.set_defaults(func=command_fetch)
 
-    load = subparsers.add_parser("load", help="Load Steam raw review pages into SQLite.")
-    load.add_argument("--raw-dir", type=Path, required=True)
-    load.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
-    load.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
-    load.set_defaults(func=command_load)
+    init_postgres = subparsers.add_parser("init-postgres", help="Create or update the Postgres schema.")
+    init_postgres.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    init_postgres.set_defaults(func=command_init_postgres)
 
-    validate = subparsers.add_parser("validate", help="Validate the Steam SQLite database.")
-    validate.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    load = subparsers.add_parser("load", aliases=["load-postgres"], help="Load Steam raw review pages into Postgres.")
+    load.add_argument("--raw-dir", type=Path, required=True)
+    load.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    load.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    load.set_defaults(func=command_load_postgres)
+
+    validate = subparsers.add_parser("validate", aliases=["validate-postgres"], help="Validate the Steam Postgres database.")
+    validate.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
     validate.add_argument("--run-id")
     validate.add_argument("--output", type=Path)
-    validate.set_defaults(func=command_validate)
+    validate.set_defaults(func=command_validate_postgres)
 
-    export = subparsers.add_parser("export", help="Export loaded Steam reviews.")
-    export.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    export = subparsers.add_parser("export", aliases=["export-postgres"], help="Export loaded Steam reviews from Postgres.")
+    export.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
     export.add_argument("--format", choices=("csv", "jsonl"), default="csv")
     export.add_argument("--output", type=Path, required=True)
     export.add_argument("--run-id")
-    export.set_defaults(func=command_export)
+    export.set_defaults(func=command_export_postgres)
 
-    daily = subparsers.add_parser("daily", help="Fetch, load, validate, export, and report Steam reviews.")
+    migrate = subparsers.add_parser("migrate-sqlite-to-postgres", help="Import an existing Steam SQLite database into Postgres.")
+    migrate.add_argument("--sqlite", type=Path, default=DEFAULT_DB_PATH)
+    migrate.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    migrate.add_argument("--batch-size", type=int, default=5000)
+    migrate.set_defaults(func=command_migrate_sqlite_to_postgres)
+
+    daily = subparsers.add_parser("daily", help="Fetch, load into Postgres, validate, and report Steam reviews.")
     add_fetch_arguments(daily)
     daily.add_argument("--reports-root", type=Path, default=DEFAULT_REPORTS_ROOT)
-    daily.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
-    daily.add_argument("--export-csv", type=Path, default=DEFAULT_EXPORT_CSV)
+    daily.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
+    daily.add_argument("--disable-delta-stop", action="store_true", help="Fetch to the page cap even when filter=updated has caught up.")
     daily.set_defaults(func=command_daily)
 
     return parser
@@ -102,14 +118,22 @@ def command_fetch(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_load(args: argparse.Namespace) -> int:
-    summary = load_pipeline_run(args.db, args.raw_dir, args.targets)
+def command_init_postgres(args: argparse.Namespace) -> int:
+    initialize_postgres(args.database_url)
+    print(json.dumps({"database_url": mask_database_url(args.database_url), "initialized": True}, indent=2, sort_keys=True))
+    return 0
+
+
+def command_load_postgres(args: argparse.Namespace) -> int:
+    from steam_review_pipeline.postgres_database import load_pipeline_run_postgres
+
+    summary = load_pipeline_run_postgres(args.database_url, args.raw_dir, args.targets)
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 
 
-def command_validate(args: argparse.Namespace) -> int:
-    report = validate_database(args.db, args.run_id)
+def command_validate_postgres(args: argparse.Namespace) -> int:
+    report = validate_postgres(args.database_url, args.run_id)
     output = json.dumps(report, indent=2, sort_keys=True)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -118,8 +142,14 @@ def command_validate(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_export(args: argparse.Namespace) -> int:
-    summary = export_reviews(args.db, args.output, args.format, args.run_id)
+def command_export_postgres(args: argparse.Namespace) -> int:
+    summary = export_reviews_postgres(args.database_url, args.output, args.format, args.run_id)
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
+def command_migrate_sqlite_to_postgres(args: argparse.Namespace) -> int:
+    summary = migrate_sqlite_to_postgres(args.sqlite, args.database_url, args.batch_size)
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 

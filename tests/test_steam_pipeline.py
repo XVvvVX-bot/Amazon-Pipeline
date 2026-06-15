@@ -1,14 +1,17 @@
 import csv
 import json
+import os
 import sqlite3
 from pathlib import Path
 
+import psycopg
 import pytest
 
 from steam_review_pipeline.database import export_reviews, load_pipeline_run, validate_database
 from steam_review_pipeline.fetcher import build_review_url, fetch_app_reviews, sanitize_payload_for_storage
 from steam_review_pipeline.files import write_json, write_jsonl
 from steam_review_pipeline.models import SteamApp
+from steam_review_pipeline.postgres_database import app_high_water_marks, load_pipeline_run_postgres, validate_postgres
 from steam_review_pipeline.targets import load_targets
 
 
@@ -164,6 +167,29 @@ def test_fetch_app_reviews_retries_rate_limited_page(tmp_path):
     assert reports[0]["terminal_reason"] == "page_cap_reached"
 
 
+def test_fetch_app_reviews_stops_when_updated_pages_are_caught_up(tmp_path):
+    session = FakeSession(
+        [
+            FakeResponse(payload=steam_payload(cursor="cursor-2", reviews=[steam_review("1001", updated=9), steam_review("1002", updated=8)])),
+            FakeResponse(payload=steam_payload(cursor="cursor-3", reviews=[steam_review("1003", updated=5), steam_review("1004", updated=4)])),
+        ]
+    )
+
+    reports = fetch_app_reviews(
+        SteamApp("730", "Counter-Strike 2", True, None),
+        tmp_path,
+        max_pages_per_app=10,
+        high_water_timestamp=5,
+        session=session,
+        sleep_fn=lambda _seconds: None,
+    )
+
+    assert len(reports) == 2
+    assert reports[0]["terminal_reason"] is None
+    assert reports[1]["terminal_reason"] == "caught_up_to_existing_reviews"
+    assert session.calls[1]["params"]["cursor"] == "cursor-2"
+
+
 def test_sanitize_payload_removes_steam_user_ids():
     payload = steam_payload(reviews=[steam_review()])
 
@@ -241,6 +267,85 @@ def test_load_steam_pipeline_is_idempotent_and_updates_changed_reviews(tmp_path)
     with sqlite3.connect(db_path) as connection:
         columns = {row[1] for row in connection.execute("PRAGMA table_info(steam_reviews)")}
     assert "steamid" not in columns
+
+
+def postgres_url():
+    url = os.environ.get("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL is not set")
+    return url
+
+
+def reset_postgres(database_url: str):
+    with psycopg.connect(database_url) as connection:
+        connection.execute(
+            """
+            DROP TABLE IF EXISTS
+                steam_review_changes,
+                steam_reviews,
+                steam_review_pages,
+                steam_apps,
+                steam_runs
+            CASCADE
+            """
+        )
+        connection.commit()
+
+
+def test_postgres_load_is_idempotent_tracks_changes_and_high_water(tmp_path):
+    database_url = postgres_url()
+    reset_postgres(database_url)
+    targets_path = tmp_path / "targets" / "steam_apps.csv"
+    write_targets(targets_path)
+    raw_dir = tmp_path / "raw" / "run-postgres"
+    raw_dir.mkdir(parents=True)
+    payload_path = raw_dir / "app_730_page_0001.json"
+    write_json(payload_path, sanitize_payload_for_storage(steam_payload(cursor="", reviews=[steam_review("1001", "Original text", updated=1)])))
+    write_jsonl(
+        raw_dir / "review_pages.jsonl",
+        [
+            {
+                "run_id": "run-postgres",
+                "app_id": "730",
+                "app_name": "Counter-Strike 2",
+                "page_number": 1,
+                "request_url": "https://store.steampowered.com/appreviews/730",
+                "cursor": "*",
+                "next_cursor": "",
+                "status": "fetched",
+                "status_code": 200,
+                "fetched_at": "2026-06-15T00:00:00+00:00",
+                "raw_json_path": str(payload_path),
+                "response_bytes": 10,
+                "review_count": 1,
+                "total_reviews": 1,
+                "total_positive": 1,
+                "total_negative": 0,
+                "attempt_count": 1,
+                "error_message": None,
+                "terminal_reason": "missing_next_cursor",
+            }
+        ],
+    )
+
+    first = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
+    second = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
+    write_json(payload_path, sanitize_payload_for_storage(steam_payload(cursor="", reviews=[steam_review("1001", "Edited text", updated=2)])))
+    third = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
+    report = validate_postgres(database_url)
+    high_water = app_high_water_marks(database_url, ["730", "999"])
+
+    assert first["reviews_inserted"] == 1
+    assert first["reviews_updated"] == 0
+    assert second["reviews_inserted"] == 0
+    assert second["duplicates_skipped"] == 1
+    assert third["reviews_updated"] == 1
+    assert report["counts"]["apps"] == 1
+    assert report["counts"]["review_pages"] == 1
+    assert report["counts"]["reviews"] == 1
+    assert report["counts"]["review_changes"] == 1
+    assert report["change_counts"]["updated"] == 1
+    assert high_water == {"730": 2, "999": 0}
 
 
 def test_load_targets_rejects_bad_app_id(tmp_path):

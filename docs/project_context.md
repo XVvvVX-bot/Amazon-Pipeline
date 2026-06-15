@@ -2,7 +2,7 @@
 
 ## Current Direction
 
-The project is a recurring live Steam review pipeline. The goal is to collect many full text reviews per app from a public, structured source, then make the cumulative dataset available for downstream analysis through SQLite, CSV, workflow artifacts, and a GitHub release.
+The project is a recurring live Steam review pipeline. The goal is to collect many full text reviews per app from a public, structured source, then make the cumulative dataset available for downstream analysis through Postgres.
 
 The work should stay focused on live acquisition, not prepared/static datasets.
 
@@ -13,9 +13,10 @@ The work should stay focused on live acquisition, not prepared/static datasets.
 - Steam review pagination uses cursors with `num_per_page=100`.
 - Daily runs use `filter=updated`; manual backfills can use `filter=recent`.
 - Raw JSON pages are sanitized before storage.
-- SQLite stores apps, review pages, runs, and full written review rows keyed by `recommendationid`.
-- The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml` on GitHub-hosted `ubuntu-latest`.
-- Cumulative data is published to the `latest-steam-data` release.
+- Postgres stores apps, review pages, runs, review changes, and full written review rows keyed by `recommendationid`.
+- The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml` on the local Mac self-hosted runner.
+- Routine cumulative data lives in local Postgres at `postgresql:///steam_reviews`.
+- CSV is no longer part of the daily workflow; exports are ad hoc.
 
 ## Recent Evidence
 
@@ -28,12 +29,27 @@ The first manual full backfill completed successfully on June 15, 2026:
 - 0 rate-limited pages.
 - `steam_reviews.sqlite` and `steam_reviews.csv` were published to `latest-steam-data`.
 
+The local Postgres development database was seeded from that release on June 15, 2026:
+
+- 20 apps imported.
+- 11,070 review pages imported.
+- 1,104,820 reviews imported.
+
+A one-app Postgres smoke run for app `730` then completed successfully:
+
+- 1 page fetched.
+- 99 reviews seen.
+- 15 reviews inserted.
+- 4 reviews updated.
+- 80 duplicates skipped.
+
 ## Open Questions
 
 - How many Steam pages per app should the normal scheduled run fetch after the first backfill?
 - How quickly does `filter=updated` refresh old `recommendationid` rows?
 - Should target discovery expand beyond the curated 20-app seed list?
 - Should discovery be an advisory workflow that produces candidate apps without mutating `data/targets/steam_apps.csv`?
+- When the project is ready for production, should Postgres move from the Mac to managed cloud Postgres?
 
 ## Reports To Inspect After Each Run
 
@@ -43,8 +59,6 @@ Inspect these files from the workflow artifact or local `data/` folder:
 - `data/reports/steam/{run_id}/validation_report.json`
 - `data/raw/steam/{run_id}/fetch_report.json`
 - `data/raw/steam/{run_id}/review_pages.jsonl`
-- `data/steam_reviews.sqlite`
-- `data/exports/steam_reviews.csv`
 
 The most important fields are:
 
@@ -56,7 +70,6 @@ The most important fields are:
 - `load_summary.reviews_inserted`
 - `load_summary.reviews_updated`
 - `load_summary.duplicates_skipped`
-- `export_summary.review_count`
 - `validation_report.quality`
 
 ## Evidence Needed For Source Viability
