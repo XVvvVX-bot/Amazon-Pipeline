@@ -21,7 +21,7 @@ from steam_review_pipeline.database import export_reviews, load_pipeline_run, va
 from steam_review_pipeline.fetcher import fetch_apps
 from steam_review_pipeline.files import write_json, write_jsonl
 from steam_review_pipeline.targets import load_targets
-from amazon_review_pipeline.utils import make_run_id
+from steam_review_pipeline.utils import make_run_id
 
 
 def build_parser() -> argparse.ArgumentParser:

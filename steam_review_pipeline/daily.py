@@ -6,11 +6,11 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from amazon_review_pipeline.utils import make_run_id, utc_timestamp
 from steam_review_pipeline.database import export_reviews, load_pipeline_run, validate_database
 from steam_review_pipeline.fetcher import fetch_apps
 from steam_review_pipeline.files import write_json, write_jsonl
 from steam_review_pipeline.targets import load_targets
+from steam_review_pipeline.utils import make_run_id, utc_timestamp
 
 
 def run_daily_pipeline(args: argparse.Namespace, sleep_fn: Callable[[float], None] = time.sleep) -> dict:

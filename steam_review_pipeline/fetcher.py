@@ -8,7 +8,6 @@ from typing import Callable
 
 import requests
 
-from amazon_review_pipeline.utils import clean_text, utc_timestamp
 from steam_review_pipeline.config import (
     DEFAULT_LANGUAGE,
     DEFAULT_NUM_PER_PAGE,
@@ -21,6 +20,7 @@ from steam_review_pipeline.config import (
 )
 from steam_review_pipeline.files import write_json
 from steam_review_pipeline.models import SteamApp
+from steam_review_pipeline.utils import clean_text, utc_timestamp
 
 SAFE_AUTHOR_FIELDS = {
     "playtime_forever",

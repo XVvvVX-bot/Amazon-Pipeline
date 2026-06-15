@@ -6,9 +6,9 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from amazon_review_pipeline.utils import clean_text
 from steam_review_pipeline.files import read_json, read_jsonl
 from steam_review_pipeline.targets import load_targets
+from steam_review_pipeline.utils import clean_text
 
 
 SCHEMA = """

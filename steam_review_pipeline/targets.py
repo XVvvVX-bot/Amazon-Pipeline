@@ -3,9 +3,9 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from amazon_review_pipeline.utils import clean_text
 from steam_review_pipeline.config import REQUIRED_TARGET_COLUMNS
 from steam_review_pipeline.models import SteamApp
+from steam_review_pipeline.utils import clean_text
 
 
 def load_targets(path: Path) -> list[SteamApp]:

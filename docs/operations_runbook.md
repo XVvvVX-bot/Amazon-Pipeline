@@ -15,30 +15,20 @@ Then inspect repository health:
 python -m pytest -q
 ```
 
-The MacBook or future VM should decide how to install local dependencies. The repository should not require machine-specific absolute paths.
+The repository should not require machine-specific absolute paths. The scheduled pipeline runs on GitHub-hosted `ubuntu-latest`.
 
 ## Persistent Source Of Truth
 
-Small persistent Steam targets live in Git:
+Small persistent targets live in Git:
 
 - `data/targets/steam_apps.csv`
 
-Deprecated Amazon state also lives in Git:
-
-- `data/targets/amazon_products.csv`
-- `data/state/pipeline_state.json`
-
-Cumulative Steam data is published through the GitHub `latest-steam-data` release:
+Cumulative data is published through the GitHub `latest-steam-data` release:
 
 - `steam_reviews.sqlite`
 - `steam_reviews.csv`
 
-Deprecated Amazon data is published through the GitHub `latest-data` release:
-
-- `reviews.sqlite`
-- `reviews.csv`
-
-Large raw/sanitized JSON or HTML, parsed reports, discovery outputs, and run reports are workflow artifacts. They are useful for inspection but should not usually be committed to Git.
+Large raw JSON, reports, exports, databases, and downloaded artifacts should not usually be committed to Git.
 
 ## Normal Daily Workflow
 
@@ -49,16 +39,18 @@ Normal daily behavior:
 1. Download latest cumulative `steam_reviews.sqlite` and `steam_reviews.csv` if available.
 2. Run tests.
 3. Fetch public Steam review pages for active app targets.
-4. Sanitize raw JSON by removing Steam user IDs before storage.
+4. Sanitize raw JSON before storage.
 5. Load, validate, and export.
-7. Upload artifacts.
-8. Update the `latest-steam-data` release.
+6. Upload workflow artifacts.
+7. Update the `latest-steam-data` release.
 
 Current scheduled defaults:
 
 - 20 curated Steam apps.
 - `filter=updated`.
 - `language=english`.
+- `purchase_type=all`.
+- `review_type=all`.
 - `num_per_page=100`.
 - `max_pages_per_app=50`.
 - 1 second between apps.
@@ -79,29 +71,7 @@ Open GitHub Actions, choose **Daily Steam Review Pipeline**, then **Run workflow
 - Set to a small number such as `2` for smoke tests.
 - Set to `0` for no cap.
 
-Deprecated Amazon modes live under **Manual Amazon Review Pipeline (Deprecated)**:
-
-`retry_recent_blocked`:
-
-- Retries targets still inside the blocked/CAPTCHA cooldown.
-- Use this only to test whether a new acquisition strategy recovers previously blocked targets.
-
-`refetch_everything`:
-
-- Makes every active target due immediately.
-- Useful for full refresh tests.
-- Expect a much longer run than a normal incremental daily run.
-
-`aggressive_stress_test`:
-
-- Removes discovery caps.
-- Recurses through Best Sellers department/subdepartment pages until terminal pages.
-- Follows visible Best Sellers pagination.
-- Forces all active targets due.
-- Uses faster pacing and still keeps runtime/block-rate safety stops.
-- Use this for one-off accessibility and scale testing, not routine daily automation.
-
-## Interpreting Daily Reports
+## Interpreting Reports
 
 Steam report fields:
 
@@ -113,38 +83,13 @@ Steam report fields:
 - `load_summary.reviews_inserted`: new recommendation IDs inserted.
 - `load_summary.reviews_updated`: existing recommendation IDs updated because Steam changed the review.
 - `load_summary.duplicates_skipped`: unchanged recommendation IDs already present.
-- `validation_report.quality`: missing text/language checks.
-
-Deprecated Amazon report fields:
-
-`fetch_summary`:
-
-- `fetched`: successful product-page fetches.
-- `blocked`: blocked/sign-in/robot-check pages.
-- `fetch_errors`: network or fetch failures.
-- `review_sections_detected`: fetched pages where review containers were visible.
-- `raw_html_deduplicated`: fetched content matched a previously stored raw page.
-
-`load_summary`:
-
-- `reviews_seen`: parsed reviews before idempotency checks.
-- `reviews_inserted`: new rows inserted.
-- `duplicates_skipped`: reviews already present in SQLite.
-- `parse_errors_recorded`: target-level parse/fetch issues recorded.
-
-`validation_report`:
-
-- `counts`: cumulative or scoped table counts.
-- `quality`: missing review fields and duplicate IDs.
-- `rating_distribution`: rating spread.
-- `date_coverage`: review date coverage.
-- `parse_error_summary`: historical and currently unresolved parsing issues.
+- `validation_report.quality`: missing text/language and duplicate checks.
 
 ## Recovery Steps
 
 Failed `latest-steam-data` release download:
 
-- If the step logs "No previous steam_reviews.sqlite release asset found; continuing", the run can start from an empty local database.
+- If the step logs `No previous steam_reviews.sqlite release asset found; continuing`, the run can start from an empty local database.
 - If GitHub API errors repeat and fail the step, rerun later or inspect GitHub release availability.
 
 Steam fetch errors or rate limits:
@@ -153,32 +98,48 @@ Steam fetch errors or rate limits:
 - Check `fetch_summary.fetch_errors`, `rate_limited_pages`, and page-level `error_message`.
 - Lower `max_pages_per_app` or add more delay before increasing scope.
 
-Deprecated Amazon runner offline:
+Unexpectedly low review counts:
 
-- Check GitHub **Settings > Actions > Runners**.
-- Ensure exactly one intended acquisition machine has the `amazon-acquisition` label.
-- Start the runner service/process on that machine.
-
-No products discovered:
-
-- Inspect `discovery_report.json`.
-- Check `blocked_pages`, `page_reports`, and saved discovery HTML.
-- Do not expand to arbitrary Amazon links; stay inside Best Sellers navigation.
-
-High block rate:
-
-- Inspect blocked raw HTML and `blocked_reasons`.
-- Slow pacing before increasing scope.
-- Do not introduce cookies, CAPTCHA solving, proxies, or bypass behavior.
-
-No reviews parsed:
-
-- Inspect `review_sections_detected` in fetch metadata.
-- Open the saved raw HTML for affected targets.
-- Confirm whether the page truly lacks visible review containers or whether parser selectors need updating.
+- Inspect per-app entries in `validation_report.json`.
+- Check `steam_review_pages` for empty pages, fetch errors, or cap hits.
+- Run a small manual smoke test with `max_pages_per_app=2` before rerunning a broad backfill.
 
 Duplicate-heavy run:
 
-- This is normal for full refetches.
-- Check `reviews_inserted` and `duplicates_skipped` together.
-- The database is idempotent by Amazon review ID when available, otherwise by stable review content hash.
+- This is normal after a full backfill when daily `filter=updated` revisits known reviews.
+- Check `reviews_inserted`, `reviews_updated`, and `duplicates_skipped` together.
+
+Large artifact or release uploads:
+
+- Backfills can generate hundreds of MB in SQLite/CSV assets and several GB when raw JSON is unpacked locally.
+- Prefer scheduled incremental mode for routine operation.
+- Use the `latest-steam-data` release for cumulative analyst-facing assets.
+
+## Local Inspection Commands
+
+Count SQLite tables:
+
+```bash
+sqlite3 data/steam_reviews.sqlite \
+  "SELECT 'apps', COUNT(*) FROM steam_apps
+   UNION ALL SELECT 'pages', COUNT(*) FROM steam_review_pages
+   UNION ALL SELECT 'reviews', COUNT(*) FROM steam_reviews
+   UNION ALL SELECT 'runs', COUNT(*) FROM steam_runs;"
+```
+
+Review counts by app:
+
+```bash
+sqlite3 data/steam_reviews.sqlite \
+  "SELECT a.app_name, COUNT(*) AS reviews
+   FROM steam_reviews r
+   LEFT JOIN steam_apps a ON a.app_id = r.app_id
+   GROUP BY r.app_id
+   ORDER BY reviews DESC;"
+```
+
+Latest run report:
+
+```bash
+find data/reports/steam -name daily_report.json -print | sort | tail -1
+```
