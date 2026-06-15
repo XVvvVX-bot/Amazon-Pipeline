@@ -22,6 +22,13 @@ from steam_review_pipeline.config import (
 from steam_review_pipeline.files import write_json
 from steam_review_pipeline.models import SteamApp
 
+SAFE_AUTHOR_FIELDS = {
+    "playtime_forever",
+    "playtime_last_two_weeks",
+    "playtime_at_review",
+    "last_played",
+}
+
 
 def fetch_apps(
     apps: list[SteamApp],
@@ -287,7 +294,7 @@ def sanitize_payload_for_storage(payload: dict) -> dict:
     for review in sanitized.get("reviews", []):
         author = review.get("author")
         if isinstance(author, dict):
-            author.pop("steamid", None)
+            review["author"] = {field: author[field] for field in SAFE_AUTHOR_FIELDS if field in author}
     return sanitized
 
 

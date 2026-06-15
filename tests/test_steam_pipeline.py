@@ -33,6 +33,10 @@ def steam_review(recommendationid="1001", text="A very complete review.", update
         "recommendationid": recommendationid,
         "author": {
             "steamid": "76561198000000000",
+            "personaname": "example-user",
+            "profile_url": "https://steamcommunity.com/profiles/76561198000000000/",
+            "avatar": "avatar-hash",
+            "persona_status": "online",
             "playtime_forever": 120,
             "playtime_last_two_weeks": 5,
             "playtime_at_review": 90,
@@ -124,6 +128,14 @@ def test_fetch_app_reviews_paginates_until_empty_and_sanitizes_raw(tmp_path):
     assert session.calls[1]["params"]["cursor"] == "cursor-2"
     saved_payload = json.loads(Path(reports[0]["raw_json_path"]).read_text(encoding="utf-8"))
     assert "steamid" not in saved_payload["reviews"][0]["author"]
+    assert "profile_url" not in saved_payload["reviews"][0]["author"]
+    assert "personaname" not in saved_payload["reviews"][0]["author"]
+    assert saved_payload["reviews"][0]["author"] == {
+        "last_played": 1700000000,
+        "playtime_at_review": 90,
+        "playtime_forever": 120,
+        "playtime_last_two_weeks": 5,
+    }
 
 
 def test_fetch_app_reviews_retries_rate_limited_page(tmp_path):
@@ -158,7 +170,18 @@ def test_sanitize_payload_removes_steam_user_ids():
     sanitized = sanitize_payload_for_storage(payload)
 
     assert "steamid" in payload["reviews"][0]["author"]
+    assert "profile_url" in payload["reviews"][0]["author"]
     assert "steamid" not in sanitized["reviews"][0]["author"]
+    assert "profile_url" not in sanitized["reviews"][0]["author"]
+    assert "personaname" not in sanitized["reviews"][0]["author"]
+    assert "avatar" not in sanitized["reviews"][0]["author"]
+    assert "persona_status" not in sanitized["reviews"][0]["author"]
+    assert set(sanitized["reviews"][0]["author"]) == {
+        "last_played",
+        "playtime_at_review",
+        "playtime_forever",
+        "playtime_last_two_weeks",
+    }
 
 
 def test_load_steam_pipeline_is_idempotent_and_updates_changed_reviews(tmp_path):
