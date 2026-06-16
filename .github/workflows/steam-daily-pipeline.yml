@@ -32,13 +32,14 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
+      - name: Create Python virtualenv
+        run: |
+          set -euo pipefail
+          python3.12 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: .venv/bin/python -m pip install -r requirements.txt
 
       - name: Check local Postgres
         env:
@@ -46,10 +47,10 @@ jobs:
         run: |
           set -euo pipefail
           database_url="${DATABASE_URL:-postgresql:///steam_reviews}"
-          python steam_pipeline.py init-postgres --database-url "$database_url"
+          .venv/bin/python steam_pipeline.py init-postgres --database-url "$database_url"
 
       - name: Run tests
-        run: python -m pytest -q
+        run: .venv/bin/python -m pytest -q
 
       - name: Run daily Steam pipeline
         env:
@@ -68,7 +69,7 @@ jobs:
             echo "Manual full backfill enabled: filter=recent and max_pages_per_app=0."
           fi
 
-          python steam_pipeline.py daily \
+          .venv/bin/python steam_pipeline.py daily \
             --database-url "$database_url" \
             --review-filter "$review_filter" \
             --max-pages-per-app "$max_pages_per_app" \
