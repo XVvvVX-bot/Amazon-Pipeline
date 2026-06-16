@@ -27,6 +27,9 @@ jobs:
   daily:
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 360
+    env:
+      PIP_CONFIG_FILE: /dev/null
+      PIP_USER: "false"
 
     steps:
       - name: Check out repository
