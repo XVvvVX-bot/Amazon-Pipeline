@@ -85,7 +85,8 @@ def add_fetch_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--purchase-type", default=DEFAULT_PURCHASE_TYPE)
     parser.add_argument("--review-type", default=DEFAULT_REVIEW_TYPE)
     parser.add_argument("--num-per-page", type=int, default=DEFAULT_NUM_PER_PAGE)
-    parser.add_argument("--max-pages-per-app", type=int, default=50, help="0 means no page cap.")
+    parser.add_argument("--max-pages-per-app", type=int, default=0, help="0 means no page cap.")
+    parser.add_argument("--max-runtime-minutes", type=float, default=300.0, help="0 means no runtime cap inside the job.")
     parser.add_argument("--timeout", type=float, default=20.0)
     parser.add_argument("--request-delay-seconds", type=float, default=0.0)
     parser.add_argument("--max-attempts", type=int, default=3)
@@ -109,6 +110,7 @@ def command_fetch(args: argparse.Namespace) -> int:
         request_delay_seconds=args.request_delay_seconds,
         max_attempts=args.max_attempts,
         retry_delay_seconds=args.retry_delay_seconds,
+        max_runtime_seconds=args.max_runtime_minutes * 60 if args.max_runtime_minutes > 0 else None,
     )
     for row in report["page_reports"]:
         row["run_id"] = run_id

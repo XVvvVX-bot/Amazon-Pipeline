@@ -57,7 +57,8 @@ Default behavior:
 - `purchase_type=all`
 - `review_type=all`
 - `num_per_page=100`
-- `max_pages_per_app=50`
+- `max_pages_per_app=0` (no page cap)
+- `max_runtime_minutes=300`
 
 Run a full public backfill against active targets:
 
@@ -117,9 +118,10 @@ Workflow behavior:
 Manual workflow options:
 
 - `full_backfill`: uses `filter=recent` and removes the page cap.
-- `max_pages_per_app`: defaults to `50`; set to `0` for no cap.
+- `max_pages_per_app`: defaults to `0`, meaning no page cap; set a small value only for smoke tests.
+- `max_runtime_minutes`: defaults to `300`; set to `0` for no runtime cap inside the job.
 
-Daily runs use `filter=updated` and stop early for an app once fetched pages have caught up to that app's current Postgres high-water `timestamp_updated`.
+Daily runs use `filter=updated` and stop early for an app once fetched pages have caught up to that app's durable sync-state watermark. The watermark advances only after an app reaches a complete terminal reason such as `caught_up_to_existing_reviews`, `empty_page`, or `missing_next_cursor`. If an app stops because of a page cap, runtime cap, fetch error, or cursor issue, it is marked backlogged and the watermark does not advance.
 
 ## Postgres Schema
 
@@ -128,6 +130,7 @@ Daily runs use `filter=updated` and stop early for an app once fetched pages hav
 - `steam_review_pages`: one row per fetched review-list API page.
 - `steam_reviews`: one row per unique `recommendationid`, with full review text and Steam review metadata.
 - `steam_review_changes`: one row per inserted or updated review seen in a run.
+- `steam_app_sync_state`: one row per app with the durable updated-review watermark and backlog status.
 
 Example review counts by app:
 

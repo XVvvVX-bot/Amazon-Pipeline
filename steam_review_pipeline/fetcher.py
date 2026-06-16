@@ -43,6 +43,7 @@ def fetch_apps(
     request_delay_seconds: float = 0.0,
     max_attempts: int = 3,
     retry_delay_seconds: float = 5.0,
+    max_runtime_seconds: float | None = None,
     high_water_by_app: dict[str, int] | None = None,
     use_high_water_stop: bool = False,
     session: requests.Session | None = None,
@@ -53,7 +54,10 @@ def fetch_apps(
     session = session or requests.Session()
 
     page_reports: list[dict] = []
+    deadline = time.monotonic() + max_runtime_seconds if max_runtime_seconds and max_runtime_seconds > 0 else None
     for app_index, app in enumerate(apps, start=1):
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         app_reports = fetch_app_reviews(
             app,
             output_dir,
@@ -66,6 +70,7 @@ def fetch_apps(
             timeout=timeout,
             max_attempts=max_attempts,
             retry_delay_seconds=retry_delay_seconds,
+            deadline=deadline,
             high_water_timestamp=(high_water_by_app or {}).get(app.app_id, 0) if use_high_water_stop else None,
             session=session,
             sleep_fn=sleep_fn,
@@ -100,6 +105,7 @@ def fetch_app_reviews(
     timeout: float = 20.0,
     max_attempts: int = 3,
     retry_delay_seconds: float = 5.0,
+    deadline: float | None = None,
     high_water_timestamp: int | None = None,
     session: requests.Session | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
@@ -111,6 +117,10 @@ def fetch_app_reviews(
     page_number = 1
 
     while max_pages_per_app == 0 or page_number <= max_pages_per_app:
+        if deadline is not None and time.monotonic() >= deadline:
+            if reports:
+                reports[-1]["terminal_reason"] = reports[-1].get("terminal_reason") or "runtime_limit_reached"
+            break
         result = request_review_page(
             session,
             app_id=app.app_id,
@@ -135,6 +145,8 @@ def fetch_app_reviews(
         query_summary = payload.get("query_summary", {}) if isinstance(payload, dict) else {}
         next_cursor = clean_text(payload.get("cursor")) if isinstance(payload, dict) else None
         status = result["status"]
+        max_timestamp_updated = max_review_timestamp(reviews, "timestamp_updated")
+        min_timestamp_updated = min_review_timestamp(reviews, "timestamp_updated")
         terminal_reason = terminal_reason_for_page(
             status=status,
             review_count=len(reviews),
@@ -143,8 +155,10 @@ def fetch_app_reviews(
             page_number=page_number,
             max_pages_per_app=max_pages_per_app,
         )
-        if terminal_reason is None and high_water_timestamp is not None and page_caught_up(reviews, high_water_timestamp):
+        if status == "fetched" and high_water_timestamp is not None and page_caught_up(reviews, high_water_timestamp):
             terminal_reason = "caught_up_to_existing_reviews"
+        if terminal_reason is None and deadline is not None and time.monotonic() >= deadline:
+            terminal_reason = "runtime_limit_reached"
         report = {
             "app_id": app.app_id,
             "app_name": app.app_name,
@@ -169,6 +183,8 @@ def fetch_app_reviews(
             "total_reviews": query_summary.get("total_reviews"),
             "total_positive": query_summary.get("total_positive"),
             "total_negative": query_summary.get("total_negative"),
+            "max_timestamp_updated": max_timestamp_updated,
+            "min_timestamp_updated": min_timestamp_updated,
             "attempt_count": result.get("attempt_count", 1),
             "error_message": result.get("error_message"),
             "terminal_reason": terminal_reason,
@@ -330,6 +346,29 @@ def page_caught_up(reviews: list[dict], high_water_timestamp: int) -> bool:
         return False
     timestamps = [int(review.get("timestamp_updated") or 0) for review in reviews]
     return max(timestamps, default=0) <= high_water_timestamp
+
+
+def max_review_timestamp(reviews: list[dict], field: str) -> int | None:
+    timestamps = review_timestamps(reviews, field)
+    return max(timestamps) if timestamps else None
+
+
+def min_review_timestamp(reviews: list[dict], field: str) -> int | None:
+    timestamps = review_timestamps(reviews, field)
+    return min(timestamps) if timestamps else None
+
+
+def review_timestamps(reviews: list[dict], field: str) -> list[int]:
+    timestamps: list[int] = []
+    for review in reviews:
+        value = review.get(field)
+        if value is None:
+            continue
+        try:
+            timestamps.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    return timestamps
 
 
 def response_size(payload: dict | None) -> int:

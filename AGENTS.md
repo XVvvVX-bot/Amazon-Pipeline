@@ -29,7 +29,8 @@ The pipeline is staged:
 4. Normalize full written review rows.
 5. Upsert normalized rows into Postgres by `recommendationid`.
 6. Validate database quality.
-7. Publish raw/report workflow artifacts from GitHub Actions.
+7. Update per-app sync state only when an app reaches a complete terminal reason.
+8. Publish raw/report workflow artifacts from GitHub Actions.
 
 The scheduled workflow runs on the local Mac self-hosted runner and uses local Postgres by default. No browser automation is required.
 
@@ -71,6 +72,7 @@ Export reviews only for ad hoc analyst extracts:
 - Preserve the staged pipeline boundaries: target selection, fetch, load, validate, report.
 - Keep live network calls out of the test suite; use fixtures and fake sessions.
 - Do not introduce a reviewer/user table. The review is the primary unit of data.
+- Do not advance `steam_app_sync_state.complete_through_timestamp_updated` after an incomplete stop such as a page cap, runtime cap, fetch error, or cursor issue.
 - Avoid hardcoded local machine paths in code or workflows.
 - Do not commit large raw JSON, database, export, or artifact outputs unless explicitly requested.
 - Prefer improving reports, observability, and reproducibility before adding downstream modeling.

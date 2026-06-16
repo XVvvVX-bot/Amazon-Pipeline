@@ -11,7 +11,13 @@ from steam_review_pipeline.database import export_reviews, load_pipeline_run, va
 from steam_review_pipeline.fetcher import build_review_url, fetch_app_reviews, sanitize_payload_for_storage
 from steam_review_pipeline.files import write_json, write_jsonl
 from steam_review_pipeline.models import SteamApp
-from steam_review_pipeline.postgres_database import app_high_water_marks, load_pipeline_run_postgres, validate_postgres
+from steam_review_pipeline.postgres_database import (
+    app_high_water_marks,
+    app_sync_states,
+    load_pipeline_run_postgres,
+    update_app_sync_states,
+    validate_postgres,
+)
 from steam_review_pipeline.targets import load_targets
 
 
@@ -281,6 +287,7 @@ def reset_postgres(database_url: str):
         connection.execute(
             """
             DROP TABLE IF EXISTS
+                steam_app_sync_state,
                 steam_review_changes,
                 steam_reviews,
                 steam_review_pages,
@@ -321,6 +328,8 @@ def test_postgres_load_is_idempotent_tracks_changes_and_high_water(tmp_path):
                 "total_reviews": 1,
                 "total_positive": 1,
                 "total_negative": 0,
+                "max_timestamp_updated": 1,
+                "min_timestamp_updated": 1,
                 "attempt_count": 1,
                 "error_message": None,
                 "terminal_reason": "missing_next_cursor",
@@ -331,21 +340,91 @@ def test_postgres_load_is_idempotent_tracks_changes_and_high_water(tmp_path):
     first = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
     second = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
     write_json(payload_path, sanitize_payload_for_storage(steam_payload(cursor="", reviews=[steam_review("1001", "Edited text", updated=2)])))
+    page_reports = json.loads((raw_dir / "review_pages.jsonl").read_text(encoding="utf-8").strip())
+    page_reports["max_timestamp_updated"] = 2
+    page_reports["min_timestamp_updated"] = 2
+    write_jsonl(raw_dir / "review_pages.jsonl", [page_reports])
     third = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
+    sync_summary = update_app_sync_states(
+        database_url,
+        [page_reports],
+        "run-postgres",
+        "updated",
+        "2026-06-15T00:00:00+00:00",
+        "2026-06-15T00:01:00+00:00",
+    )
     report = validate_postgres(database_url)
     high_water = app_high_water_marks(database_url, ["730", "999"])
+    sync_states = app_sync_states(database_url, ["730", "999"])
 
     assert first["reviews_inserted"] == 1
     assert first["reviews_updated"] == 0
     assert second["reviews_inserted"] == 0
     assert second["duplicates_skipped"] == 1
     assert third["reviews_updated"] == 1
+    assert sync_summary["complete_apps"] == ["730"]
+    assert sync_summary["backlogged_apps"] == []
     assert report["counts"]["apps"] == 1
     assert report["counts"]["review_pages"] == 1
     assert report["counts"]["reviews"] == 1
     assert report["counts"]["review_changes"] == 1
+    assert report["counts"]["sync_states"] == 1
     assert report["change_counts"]["updated"] == 1
     assert high_water == {"730": 2, "999": 0}
+    assert sync_states["730"]["backlogged"] is False
+    assert sync_states["999"]["backlogged"] is True
+
+
+def test_sync_state_does_not_advance_for_capped_app(tmp_path):
+    database_url = postgres_url()
+    reset_postgres(database_url)
+    targets_path = tmp_path / "targets" / "steam_apps.csv"
+    write_targets(targets_path)
+    raw_dir = tmp_path / "raw" / "run-capped"
+    raw_dir.mkdir(parents=True)
+    payload_path = raw_dir / "app_730_page_0001.json"
+    write_json(payload_path, sanitize_payload_for_storage(steam_payload(cursor="more", reviews=[steam_review("2001", "New text", updated=10)])))
+    page_report = {
+        "run_id": "run-capped",
+        "app_id": "730",
+        "app_name": "Counter-Strike 2",
+        "page_number": 1,
+        "request_url": "https://store.steampowered.com/appreviews/730",
+        "cursor": "*",
+        "next_cursor": "more",
+        "status": "fetched",
+        "status_code": 200,
+        "fetched_at": "2026-06-15T00:00:00+00:00",
+        "raw_json_path": str(payload_path),
+        "response_bytes": 10,
+        "review_count": 1,
+        "total_reviews": 100,
+        "total_positive": 1,
+        "total_negative": 0,
+        "max_timestamp_updated": 10,
+        "min_timestamp_updated": 10,
+        "attempt_count": 1,
+        "error_message": None,
+        "terminal_reason": "page_cap_reached",
+    }
+    write_jsonl(raw_dir / "review_pages.jsonl", [page_report])
+
+    load_pipeline_run_postgres(database_url, raw_dir, targets_path)
+    sync_summary = update_app_sync_states(
+        database_url,
+        [page_report],
+        "run-capped",
+        "updated",
+        "2026-06-15T00:00:00+00:00",
+        "2026-06-15T00:01:00+00:00",
+    )
+    high_water = app_high_water_marks(database_url, ["730"])
+    sync_states = app_sync_states(database_url, ["730"])
+
+    assert sync_summary["complete_apps"] == []
+    assert sync_summary["backlogged_apps"] == ["730"]
+    assert high_water == {"730": 0}
+    assert sync_states["730"]["backlogged"] is True
 
 
 def test_load_targets_rejects_bad_app_id(tmp_path):

@@ -54,9 +54,12 @@ Current scheduled defaults:
 - `purchase_type=all`.
 - `review_type=all`.
 - `num_per_page=100`.
-- `max_pages_per_app=50`.
+- `max_pages_per_app=0`, meaning no page cap.
+- `max_runtime_minutes=300`.
 - 1 second between apps.
-- Delta stop is enabled for `filter=updated`; an app stops early once fetched pages have caught up to the existing Postgres high-water `timestamp_updated`.
+- Delta stop is enabled for `filter=updated`; an app stops early once fetched pages have caught up to the app's durable sync-state watermark.
+- The sync-state watermark advances only after a complete terminal reason: `caught_up_to_existing_reviews`, `empty_page`, or `missing_next_cursor`.
+- If an app stops because of `page_cap_reached`, `runtime_limit_reached`, `fetch_error`, or `cursor_not_advancing`, it is marked backlogged and the watermark does not advance.
 
 ## Manual Workflow Modes
 
@@ -70,9 +73,15 @@ Open GitHub Actions, choose **Daily Steam Review Pipeline**, then **Run workflow
 
 `max_pages_per_app`:
 
-- Defaults to `50`.
+- Defaults to `0`, meaning no page cap.
 - Set to a small number such as `2` for smoke tests.
 - Set to `0` for no cap.
+
+`max_runtime_minutes`:
+
+- Defaults to `300`.
+- Set lower for smoke tests.
+- Set to `0` only for deliberate uncapped manual recovery.
 
 ## Interpreting Reports
 
@@ -82,10 +91,12 @@ Steam report fields:
 - `fetch_summary.reviews_seen`: review rows observed before DB idempotency checks.
 - `fetch_summary.fetch_errors`: failed pages after retries.
 - `fetch_summary.rate_limited_pages`: pages that ended with HTTP 429.
-- `fetch_summary.capped_apps`: apps that hit `max_pages_per_app`.
+- `fetch_summary.capped_apps`: apps that hit `max_pages_per_app`; these should be treated as backlogged.
 - `load_summary.reviews_inserted`: new recommendation IDs inserted.
 - `load_summary.reviews_updated`: existing recommendation IDs updated because Steam changed the review.
 - `load_summary.duplicates_skipped`: unchanged recommendation IDs already present.
+- `sync_state_summary.complete_apps`: apps whose completeness watermark advanced or remained safely complete.
+- `sync_state_summary.backlogged_apps`: apps that stopped incompletely and need a later catch-up run.
 - `validation_report.quality`: missing text/language and duplicate checks.
 
 ## Recovery Steps
@@ -107,7 +118,7 @@ Steam fetch errors or rate limits:
 
 - Inspect `data/raw/steam/{run_id}/fetch_report.json`.
 - Check `fetch_summary.fetch_errors`, `rate_limited_pages`, and page-level `error_message`.
-- Lower `max_pages_per_app` or add more delay before increasing scope.
+- Add more delay or lower `max_runtime_minutes` if the job needs a smaller operational window.
 
 Unexpectedly low review counts:
 
@@ -117,8 +128,14 @@ Unexpectedly low review counts:
 
 Duplicate-heavy run:
 
-- This is normal after a full backfill when daily `filter=updated` revisits known reviews.
+- This is normal when an app catches up to its sync-state watermark because the boundary page overlaps already-known reviews.
 - Check `reviews_inserted`, `reviews_updated`, and `duplicates_skipped` together.
+
+Backlogged app:
+
+- Check `sync_state_summary.backlogged_apps` and `validation_report.sync_state`.
+- A later normal run will retry because the app watermark did not advance.
+- For manual recovery, run with `max_pages_per_app=0` and enough `max_runtime_minutes` to reach `caught_up_to_existing_reviews` or `empty_page`.
 
 Large artifact or release uploads:
 

@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS steam_review_pages (
     total_reviews INTEGER,
     total_positive INTEGER,
     total_negative INTEGER,
+    max_timestamp_updated INTEGER,
+    min_timestamp_updated INTEGER,
     attempt_count INTEGER NOT NULL DEFAULT 1,
     error_message TEXT,
     terminal_reason TEXT,
@@ -109,12 +111,35 @@ CREATE TABLE IF NOT EXISTS steam_review_changes (
     UNIQUE (run_id, recommendationid)
 );
 
+CREATE TABLE IF NOT EXISTS steam_app_sync_state (
+    app_id TEXT PRIMARY KEY REFERENCES steam_apps(app_id),
+    complete_through_timestamp_updated INTEGER NOT NULL DEFAULT 0,
+    backlogged INTEGER NOT NULL DEFAULT 1,
+    last_started_at TEXT,
+    last_completed_at TEXT,
+    last_run_id TEXT,
+    last_successful_run_id TEXT,
+    last_terminal_reason TEXT,
+    last_seen_max_timestamp_updated INTEGER,
+    last_seen_min_timestamp_updated INTEGER,
+    last_page_count INTEGER NOT NULL DEFAULT 0,
+    last_review_count INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE steam_review_pages ADD COLUMN IF NOT EXISTS max_timestamp_updated INTEGER;
+ALTER TABLE steam_review_pages ADD COLUMN IF NOT EXISTS min_timestamp_updated INTEGER;
+
 CREATE INDEX IF NOT EXISTS idx_steam_reviews_app_id ON steam_reviews(app_id);
 CREATE INDEX IF NOT EXISTS idx_steam_reviews_run_id ON steam_reviews(run_id);
 CREATE INDEX IF NOT EXISTS idx_steam_reviews_app_updated ON steam_reviews(app_id, timestamp_updated DESC);
 CREATE INDEX IF NOT EXISTS idx_steam_review_pages_run_id ON steam_review_pages(run_id);
 CREATE INDEX IF NOT EXISTS idx_steam_review_changes_run_id ON steam_review_changes(run_id);
+CREATE INDEX IF NOT EXISTS idx_steam_app_sync_state_backlogged ON steam_app_sync_state(backlogged);
 """
+
+COMPLETE_TERMINAL_REASONS = {"caught_up_to_existing_reviews", "empty_page", "missing_next_cursor"}
+SYNCED_FILTERS = {"recent", "updated"}
 
 
 def connect_postgres(database_url: str) -> psycopg.Connection:
@@ -135,16 +160,227 @@ def app_high_water_marks(database_url: str, app_ids: Iterable[str]) -> dict[str,
         connection.execute(POSTGRES_SCHEMA)
         rows = connection.execute(
             """
-            SELECT app_id, COALESCE(MAX(timestamp_updated), 0) AS high_water
-            FROM steam_reviews
+            SELECT app_id, COALESCE(complete_through_timestamp_updated, 0) AS high_water
+            FROM steam_app_sync_state
             WHERE app_id = ANY(%s)
-            GROUP BY app_id
             """,
             (app_id_list,),
         ).fetchall()
     marks = {app_id: 0 for app_id in app_id_list}
     marks.update({str(row["app_id"]): int(row["high_water"] or 0) for row in rows})
     return marks
+
+
+def app_sync_states(database_url: str, app_ids: Iterable[str] | None = None) -> dict[str, dict]:
+    app_id_list = [str(app_id) for app_id in app_ids] if app_ids is not None else []
+    with connect_postgres(database_url) as connection:
+        connection.execute(POSTGRES_SCHEMA)
+        if app_ids is None:
+            rows = connection.execute(
+                """
+                SELECT app_id, complete_through_timestamp_updated, backlogged,
+                    last_started_at, last_completed_at, last_run_id,
+                    last_successful_run_id, last_terminal_reason,
+                    last_seen_max_timestamp_updated, last_seen_min_timestamp_updated,
+                    last_page_count, last_review_count, updated_at
+                FROM steam_app_sync_state
+                ORDER BY app_id
+                """
+            ).fetchall()
+        elif app_id_list:
+            rows = connection.execute(
+                """
+                SELECT app_id, complete_through_timestamp_updated, backlogged,
+                    last_started_at, last_completed_at, last_run_id,
+                    last_successful_run_id, last_terminal_reason,
+                    last_seen_max_timestamp_updated, last_seen_min_timestamp_updated,
+                    last_page_count, last_review_count, updated_at
+                FROM steam_app_sync_state
+                WHERE app_id = ANY(%s)
+                ORDER BY app_id
+                """,
+                (app_id_list,),
+            ).fetchall()
+        else:
+            rows = []
+    states = {str(row["app_id"]): normalize_sync_state_row(row) for row in rows}
+    for app_id in app_id_list:
+        states.setdefault(app_id, default_sync_state(app_id))
+    return states
+
+
+def default_sync_state(app_id: str) -> dict:
+    return {
+        "app_id": str(app_id),
+        "complete_through_timestamp_updated": 0,
+        "backlogged": True,
+        "last_started_at": None,
+        "last_completed_at": None,
+        "last_run_id": None,
+        "last_successful_run_id": None,
+        "last_terminal_reason": None,
+        "last_seen_max_timestamp_updated": None,
+        "last_seen_min_timestamp_updated": None,
+        "last_page_count": 0,
+        "last_review_count": 0,
+        "updated_at": None,
+    }
+
+
+def normalize_sync_state_row(row: dict) -> dict:
+    state = dict(row)
+    state["backlogged"] = bool(state.get("backlogged"))
+    state["complete_through_timestamp_updated"] = int(state.get("complete_through_timestamp_updated") or 0)
+    state["last_page_count"] = int(state.get("last_page_count") or 0)
+    state["last_review_count"] = int(state.get("last_review_count") or 0)
+    return state
+
+
+def update_app_sync_states(
+    database_url: str,
+    page_reports: list[dict],
+    run_id: str,
+    review_filter: str,
+    started_at: str,
+    completed_at: str,
+) -> dict:
+    if review_filter not in SYNCED_FILTERS:
+        return {
+            "states_updated": 0,
+            "complete_apps": [],
+            "backlogged_apps": [],
+            "skipped": True,
+            "reason": f"filter={review_filter} is not chronological",
+        }
+
+    app_reports: dict[str, list[dict]] = {}
+    for row in page_reports:
+        app_id = clean_text(row.get("app_id"))
+        if app_id:
+            app_reports.setdefault(app_id, []).append(row)
+
+    complete_apps: list[str] = []
+    backlogged_apps: list[str] = []
+    terminal_reasons: dict[str, int] = {}
+    watermarks: dict[str, int] = {}
+
+    with connect_postgres(database_url) as connection:
+        connection.execute(POSTGRES_SCHEMA)
+        for app_id, rows in sorted(app_reports.items()):
+            last_row = rows[-1]
+            terminal_reason = clean_text(last_row.get("terminal_reason")) or "unknown"
+            terminal_reasons[terminal_reason] = terminal_reasons.get(terminal_reason, 0) + 1
+            complete = terminal_reason in COMPLETE_TERMINAL_REASONS
+            previous = connection.execute(
+                """
+                SELECT complete_through_timestamp_updated, last_successful_run_id
+                FROM steam_app_sync_state
+                WHERE app_id = %s
+                """,
+                (app_id,),
+            ).fetchone()
+            previous_watermark = int((previous or {}).get("complete_through_timestamp_updated") or 0)
+            previous_successful_run_id = (previous or {}).get("last_successful_run_id")
+            max_seen = max_page_value(rows, "max_timestamp_updated")
+            min_seen = min_page_value(rows, "min_timestamp_updated")
+            new_watermark = max(previous_watermark, max_seen or 0) if complete else previous_watermark
+            last_successful_run_id = run_id if complete else previous_successful_run_id
+            backlogged = not complete
+            upsert_app_sync_state(
+                connection,
+                app_id=app_id,
+                complete_through_timestamp_updated=new_watermark,
+                backlogged=backlogged,
+                started_at=started_at,
+                completed_at=completed_at,
+                run_id=run_id,
+                last_successful_run_id=last_successful_run_id,
+                terminal_reason=terminal_reason,
+                max_seen=max_seen,
+                min_seen=min_seen,
+                page_count=len(rows),
+                review_count=sum(int(row.get("review_count") or 0) for row in rows),
+            )
+            watermarks[app_id] = new_watermark
+            if complete:
+                complete_apps.append(app_id)
+            else:
+                backlogged_apps.append(app_id)
+        connection.commit()
+
+    return {
+        "states_updated": len(app_reports),
+        "complete_apps": complete_apps,
+        "backlogged_apps": backlogged_apps,
+        "terminal_reasons": terminal_reasons,
+        "watermarks": watermarks,
+    }
+
+
+def upsert_app_sync_state(
+    connection: psycopg.Connection,
+    app_id: str,
+    complete_through_timestamp_updated: int,
+    backlogged: bool,
+    started_at: str,
+    completed_at: str,
+    run_id: str,
+    last_successful_run_id: str | None,
+    terminal_reason: str,
+    max_seen: int | None,
+    min_seen: int | None,
+    page_count: int,
+    review_count: int,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO steam_app_sync_state (
+            app_id, complete_through_timestamp_updated, backlogged,
+            last_started_at, last_completed_at, last_run_id,
+            last_successful_run_id, last_terminal_reason,
+            last_seen_max_timestamp_updated, last_seen_min_timestamp_updated,
+            last_page_count, last_review_count, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT(app_id) DO UPDATE SET
+            complete_through_timestamp_updated = EXCLUDED.complete_through_timestamp_updated,
+            backlogged = EXCLUDED.backlogged,
+            last_started_at = EXCLUDED.last_started_at,
+            last_completed_at = EXCLUDED.last_completed_at,
+            last_run_id = EXCLUDED.last_run_id,
+            last_successful_run_id = EXCLUDED.last_successful_run_id,
+            last_terminal_reason = EXCLUDED.last_terminal_reason,
+            last_seen_max_timestamp_updated = EXCLUDED.last_seen_max_timestamp_updated,
+            last_seen_min_timestamp_updated = EXCLUDED.last_seen_min_timestamp_updated,
+            last_page_count = EXCLUDED.last_page_count,
+            last_review_count = EXCLUDED.last_review_count,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            app_id,
+            complete_through_timestamp_updated,
+            int(backlogged),
+            started_at,
+            completed_at,
+            run_id,
+            last_successful_run_id,
+            terminal_reason,
+            max_seen,
+            min_seen,
+            page_count,
+            review_count,
+        ),
+    )
+
+
+def max_page_value(rows: list[dict], field: str) -> int | None:
+    values = [int(row[field]) for row in rows if row.get(field) is not None]
+    return max(values) if values else None
+
+
+def min_page_value(rows: list[dict], field: str) -> int | None:
+    values = [int(row[field]) for row in rows if row.get(field) is not None]
+    return min(values) if values else None
 
 
 def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: Path | None = None) -> dict:
@@ -297,9 +533,10 @@ def upsert_pages_postgres(connection: psycopg.Connection, page_reports: list[dic
                 page_key, run_id, app_id, page_number, request_url, cursor,
                 next_cursor, status, status_code, fetched_at, raw_json_path,
                 response_bytes, review_count, total_reviews, total_positive,
-                total_negative, attempt_count, error_message, terminal_reason
+                total_negative, max_timestamp_updated, min_timestamp_updated,
+                attempt_count, error_message, terminal_reason
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(run_id, app_id, page_number) DO UPDATE SET
                 request_url = EXCLUDED.request_url,
                 cursor = EXCLUDED.cursor,
@@ -313,6 +550,8 @@ def upsert_pages_postgres(connection: psycopg.Connection, page_reports: list[dic
                 total_reviews = EXCLUDED.total_reviews,
                 total_positive = EXCLUDED.total_positive,
                 total_negative = EXCLUDED.total_negative,
+                max_timestamp_updated = EXCLUDED.max_timestamp_updated,
+                min_timestamp_updated = EXCLUDED.min_timestamp_updated,
                 attempt_count = EXCLUDED.attempt_count,
                 error_message = EXCLUDED.error_message,
                 terminal_reason = EXCLUDED.terminal_reason
@@ -334,6 +573,8 @@ def upsert_pages_postgres(connection: psycopg.Connection, page_reports: list[dic
                 page.get("total_reviews"),
                 page.get("total_positive"),
                 page.get("total_negative"),
+                page.get("max_timestamp_updated"),
+                page.get("min_timestamp_updated"),
                 int(page.get("attempt_count") or 1),
                 clean_text(page.get("error_message")),
                 clean_text(page.get("terminal_reason")),
@@ -438,6 +679,7 @@ def validate_postgres(database_url: str, run_id: str | None = None) -> dict:
                 "review_pages": scoped_count_postgres(connection, "steam_review_pages", run_id),
                 "reviews": scoped_count_postgres(connection, "steam_reviews", run_id),
                 "review_changes": scoped_count_postgres(connection, "steam_review_changes", run_id),
+                "sync_states": scalar_postgres(connection, "SELECT COUNT(*) FROM steam_app_sync_state"),
             },
             "quality": {
                 "missing_review_text": scalar_postgres(connection, f"SELECT COUNT(*) FROM steam_reviews r {where} AND (r.review IS NULL OR r.review = '')", params),
@@ -448,6 +690,7 @@ def validate_postgres(database_url: str, run_id: str | None = None) -> dict:
             "app_review_counts": app_review_counts_postgres(connection, run_id),
             "page_status_counts": page_status_counts_postgres(connection, run_id),
             "change_counts": change_counts_postgres(connection, run_id),
+            "sync_state": app_sync_state_summary_postgres(connection),
         }
 
 
@@ -690,6 +933,25 @@ def change_counts_postgres(connection: psycopg.Connection, run_id: str | None) -
         params,
     ).fetchall()
     return {str(row["change_type"]): int(row["count"]) for row in rows}
+
+
+def app_sync_state_summary_postgres(connection: psycopg.Connection) -> dict:
+    rows = connection.execute(
+        """
+        SELECT app_id, complete_through_timestamp_updated, backlogged,
+            last_terminal_reason, last_run_id, last_successful_run_id,
+            last_seen_max_timestamp_updated, last_page_count, last_review_count
+        FROM steam_app_sync_state
+        ORDER BY backlogged DESC, app_id
+        """
+    ).fetchall()
+    states = [normalize_sync_state_row(row) for row in rows]
+    return {
+        "state_count": len(states),
+        "backlogged_count": sum(1 for row in states if row["backlogged"]),
+        "complete_count": sum(1 for row in states if not row["backlogged"]),
+        "apps": states,
+    }
 
 
 def mask_database_url(database_url: str) -> str:

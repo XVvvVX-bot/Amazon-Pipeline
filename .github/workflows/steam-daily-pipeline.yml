@@ -13,7 +13,12 @@ on:
       max_pages_per_app:
         description: "Maximum review pages per app; 0 means no cap"
         required: false
-        default: "50"
+        default: "0"
+        type: string
+      max_runtime_minutes:
+        description: "Maximum pipeline runtime inside the job; 0 means no runtime cap"
+        required: false
+        default: "300"
         type: string
 
 permissions:
@@ -59,7 +64,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.STEAM_DATABASE_URL }}
           INPUT_FULL_BACKFILL: ${{ github.event_name == 'workflow_dispatch' && inputs.full_backfill || 'false' }}
-          INPUT_MAX_PAGES_PER_APP: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app || '50' }}
+          INPUT_MAX_PAGES_PER_APP: ${{ github.event_name == 'workflow_dispatch' && inputs.max_pages_per_app || '0' }}
+          INPUT_MAX_RUNTIME_MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_runtime_minutes || '300' }}
         run: |
           set -euo pipefail
 
@@ -76,6 +82,7 @@ jobs:
             --database-url "$database_url" \
             --review-filter "$review_filter" \
             --max-pages-per-app "$max_pages_per_app" \
+            --max-runtime-minutes "$INPUT_MAX_RUNTIME_MINUTES" \
             --num-per-page 100 \
             --language english \
             --purchase-type all \
