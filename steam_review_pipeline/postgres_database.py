@@ -168,6 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_steam_app_sync_state_backlogged ON steam_app_sync
 
 COMPLETE_TERMINAL_REASONS = {"caught_up_to_existing_reviews", "empty_page", "missing_next_cursor"}
 SYNCED_FILTERS = {"recent", "updated"}
+REVIEW_UPSERT_BATCH_SIZE = 5000
 
 
 def connect_postgres(database_url: str) -> psycopg.Connection:
@@ -616,83 +617,122 @@ def upsert_reviews_postgres(connection: psycopg.Connection, reviews: list[dict],
     inserted = 0
     updated = 0
     unchanged = 0
-    for review in reviews:
-        recommendationid = clean_text(review.get("recommendationid"))
-        if not recommendationid:
+    for batch in chunks(reviews, REVIEW_UPSERT_BATCH_SIZE):
+        recommendationids = [clean_text(review.get("recommendationid")) for review in batch if clean_text(review.get("recommendationid"))]
+        if not recommendationids:
             continue
-        existing = connection.execute(
-            "SELECT timestamp_updated, review FROM steam_reviews WHERE recommendationid = %s",
-            (recommendationid,),
-        ).fetchone()
-        values = review_values(review, run_id)
-        if existing is None:
-            connection.execute(
-                """
-                INSERT INTO steam_reviews (
-                    recommendationid, run_id, app_id, language, review, voted_up,
-                    timestamp_created, timestamp_updated, created_at_iso, updated_at_iso,
-                    votes_up, votes_funny, weighted_vote_score, comment_count,
-                    steam_purchase, received_for_free, written_during_early_access,
-                    primarily_steam_deck, playtime_forever, playtime_last_two_weeks,
-                    playtime_at_review, last_played, collected_at, source_page_key
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                values,
-            )
-            insert_change(connection, run_id, review, "inserted", None)
-            inserted += 1
-            continue
-        existing_updated = int(existing["timestamp_updated"] or 0)
-        incoming_updated = int(review.get("timestamp_updated") or 0)
-        if incoming_updated > existing_updated or clean_review_text(existing["review"]) != review.get("review"):
-            connection.execute(
-                """
-                UPDATE steam_reviews
-                SET run_id = %s, app_id = %s, language = %s, review = %s, voted_up = %s,
-                    timestamp_created = %s, timestamp_updated = %s, created_at_iso = %s,
-                    updated_at_iso = %s, votes_up = %s, votes_funny = %s,
-                    weighted_vote_score = %s, comment_count = %s, steam_purchase = %s,
-                    received_for_free = %s, written_during_early_access = %s,
-                    primarily_steam_deck = %s, playtime_forever = %s,
-                    playtime_last_two_weeks = %s, playtime_at_review = %s,
-                    last_played = %s, collected_at = %s, source_page_key = %s
-                WHERE recommendationid = %s
-                """,
-                values[1:] + (recommendationid,),
-            )
-            insert_change(connection, run_id, review, "updated", existing_updated)
-            updated += 1
-        else:
-            unchanged += 1
+        existing_rows = connection.execute(
+            """
+            SELECT recommendationid, timestamp_updated, review
+            FROM steam_reviews
+            WHERE recommendationid = ANY(%s)
+            """,
+            (recommendationids,),
+        ).fetchall()
+        existing_by_id = {
+            clean_text(row["recommendationid"]): {
+                "timestamp_updated": int(row["timestamp_updated"] or 0),
+                "review": clean_review_text(row["review"]),
+            }
+            for row in existing_rows
+        }
+        insert_values = []
+        update_values = []
+        change_values = []
+        for review in batch:
+            recommendationid = clean_text(review.get("recommendationid"))
+            if not recommendationid:
+                continue
+            values = review_values(review, run_id)
+            existing = existing_by_id.get(recommendationid)
+            incoming_updated = int(review.get("timestamp_updated") or 0)
+            incoming_review = review.get("review")
+            if existing is None:
+                insert_values.append(values)
+                change_values.append(change_values_tuple(run_id, review, "inserted", None))
+                existing_by_id[recommendationid] = {"timestamp_updated": incoming_updated, "review": incoming_review}
+                inserted += 1
+                continue
+            existing_updated = int(existing.get("timestamp_updated") or 0)
+            if incoming_updated > existing_updated or clean_review_text(existing.get("review")) != incoming_review:
+                update_values.append(values[1:] + (recommendationid,))
+                change_values.append(change_values_tuple(run_id, review, "updated", existing_updated))
+                existing_by_id[recommendationid] = {"timestamp_updated": incoming_updated, "review": incoming_review}
+                updated += 1
+            else:
+                unchanged += 1
+        with connection.cursor() as cursor:
+            if insert_values:
+                cursor.executemany(INSERT_REVIEW_SQL, insert_values)
+            if update_values:
+                cursor.executemany(UPDATE_REVIEW_SQL, update_values)
+            if change_values:
+                cursor.executemany(UPSERT_REVIEW_CHANGE_SQL, change_values)
     return {"inserted": inserted, "updated": updated, "unchanged": unchanged}
 
 
-def insert_change(connection: psycopg.Connection, run_id: str, review: dict, change_type: str, previous_updated: int | None) -> None:
-    connection.execute(
-        """
-        INSERT INTO steam_review_changes (
-            run_id, recommendationid, app_id, change_type,
-            previous_timestamp_updated, new_timestamp_updated, source_page_key
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT(run_id, recommendationid) DO UPDATE SET
-            change_type = EXCLUDED.change_type,
-            previous_timestamp_updated = EXCLUDED.previous_timestamp_updated,
-            new_timestamp_updated = EXCLUDED.new_timestamp_updated,
-            source_page_key = EXCLUDED.source_page_key,
-            changed_at = CURRENT_TIMESTAMP
-        """,
-        (
-            run_id,
-            clean_text(review.get("recommendationid")),
-            clean_text(review.get("app_id")),
-            change_type,
-            previous_updated,
-            review.get("timestamp_updated"),
-            clean_text(review.get("source_page_key")),
-        ),
+INSERT_REVIEW_SQL = """
+INSERT INTO steam_reviews (
+    recommendationid, run_id, app_id, language, review, voted_up,
+    timestamp_created, timestamp_updated, created_at_iso, updated_at_iso,
+    votes_up, votes_funny, weighted_vote_score, comment_count,
+    steam_purchase, received_for_free, written_during_early_access,
+    primarily_steam_deck, playtime_forever, playtime_last_two_weeks,
+    playtime_at_review, last_played, collected_at, source_page_key
+)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT(recommendationid) DO NOTHING
+"""
+
+
+UPDATE_REVIEW_SQL = """
+UPDATE steam_reviews
+SET run_id = %s, app_id = %s, language = %s, review = %s, voted_up = %s,
+    timestamp_created = %s, timestamp_updated = %s, created_at_iso = %s,
+    updated_at_iso = %s, votes_up = %s, votes_funny = %s,
+    weighted_vote_score = %s, comment_count = %s, steam_purchase = %s,
+    received_for_free = %s, written_during_early_access = %s,
+    primarily_steam_deck = %s, playtime_forever = %s,
+    playtime_last_two_weeks = %s, playtime_at_review = %s,
+    last_played = %s, collected_at = %s, source_page_key = %s
+WHERE recommendationid = %s
+"""
+
+
+UPSERT_REVIEW_CHANGE_SQL = """
+INSERT INTO steam_review_changes (
+    run_id, recommendationid, app_id, change_type,
+    previous_timestamp_updated, new_timestamp_updated, source_page_key
+)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT(run_id, recommendationid) DO UPDATE SET
+    change_type = EXCLUDED.change_type,
+    previous_timestamp_updated = EXCLUDED.previous_timestamp_updated,
+    new_timestamp_updated = EXCLUDED.new_timestamp_updated,
+    source_page_key = EXCLUDED.source_page_key,
+    changed_at = CURRENT_TIMESTAMP
+"""
+
+
+def chunks(items: list[dict], size: int):
+    for index in range(0, len(items), size):
+        yield items[index : index + size]
+
+
+def change_values_tuple(run_id: str, review: dict, change_type: str, previous_updated: int | None) -> tuple:
+    return (
+        run_id,
+        clean_text(review.get("recommendationid")),
+        clean_text(review.get("app_id")),
+        change_type,
+        previous_updated,
+        review.get("timestamp_updated"),
+        clean_text(review.get("source_page_key")),
     )
+
+
+def insert_change(connection: psycopg.Connection, run_id: str, review: dict, change_type: str, previous_updated: int | None) -> None:
+    connection.execute(UPSERT_REVIEW_CHANGE_SQL, change_values_tuple(run_id, review, change_type, previous_updated))
 
 
 def validate_postgres(database_url: str, run_id: str | None = None) -> dict:
