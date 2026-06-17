@@ -1,11 +1,6 @@
-# Review Acquisition Pipeline
+# Steam Review Pipeline
 
-This repository currently has two tracks:
-
-- A working Steam review ingestion testbed that stores cumulative review data in local Postgres.
-- An app-store source evaluation track for deciding whether public Google Play or Apple App Store reviews can become the commercially stronger v1 source.
-
-Steam remains useful for validating ingestion mechanics, but the project is now evaluating app-store review data before committing to a primary production source.
+This repository runs a live Steam review acquisition pipeline. Steam exposes public, cursor-paginated full review text through `store.steampowered.com/appreviews/{app_id}`, so the pipeline can collect structured review rows without browser automation or login-gated pages.
 
 ## Install
 
@@ -30,41 +25,13 @@ Skip the `createdb` commands if those databases already exist.
 
 - `steam_review_pipeline/`: target loading, API fetching, Postgres loading, validation, optional export, and daily orchestration.
 - `steam_pipeline.py`: thin CLI wrapper for the Steam pipeline.
-- `app_store_source_evaluation/`: conservative app-store source evaluation helpers.
-- `app_store_evaluate.py`: CLI for summarizing app-store targets and running no-login storefront smoke tests.
 - `data/targets/steam_apps.csv`: curated Steam app target list.
-- `data/targets/app_store_public_apps.csv`: curated public cross-platform app target list for source evaluation.
-- `data/evaluation/app_store_source_matrix.csv`: Google Play, Apple App Store, and licensed-provider feasibility matrix.
 - `.github/workflows/steam-daily-pipeline.yml`: scheduled and manual Steam acquisition workflow.
 - `.github/workflows/ci.yml`: test workflow for code changes.
 - `docs/project_context.md`: current project direction and operating assumptions.
-- `docs/app_store_source_evaluation.md`: app-store source evaluation memo, decision gate, and references.
 - `docs/operations_runbook.md`: runbook for operating and troubleshooting the Steam pipeline.
 
-## App Store Source Evaluation
-
-The app-store evaluation is intentionally not a production ingestion pipeline yet. It exists to answer whether public Google Play or Apple App Store reviews can provide enough review depth, metadata, freshness, and operational stability for downstream analytics.
-
-Summarize the public target set:
-
-```bash
-python app_store_evaluate.py targets --targets data/targets/app_store_public_apps.csv
-```
-
-Run a conservative no-login storefront smoke test:
-
-```bash
-python app_store_evaluate.py smoke \
-  --targets data/targets/app_store_public_apps.csv \
-  --limit 3 \
-  --output /tmp/app_store_storefront_smoke.json
-```
-
-The smoke test fetches only public app detail pages. It does not use login state, personal cookies, hidden review endpoints, CAPTCHA solving, proxy rotation, or anti-bot bypasses.
-
-See `docs/app_store_source_evaluation.md` before adding any app-store production code.
-
-## Steam Target List
+## Target List
 
 Steam targets live in `data/targets/steam_apps.csv` with these columns:
 
@@ -134,7 +101,7 @@ Export Steam reviews only when an analyst needs a file extract:
 
 Raw JSON is sanitized before storage. The normalized Postgres tables do not store Steam user IDs; review identity is `recommendationid`.
 
-## Steam Daily Automation
+## Daily Automation
 
 The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml`. It runs on the local Mac self-hosted runner and writes to local Postgres by default with `postgresql:///steam_reviews`.
 

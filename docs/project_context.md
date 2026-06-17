@@ -2,16 +2,12 @@
 
 ## Current Direction
 
-The project is a recurring live review acquisition project. Steam is now the ingestion mechanics testbed; the next source-selection decision is whether public Google Play or Apple App Store reviews can provide stronger commercial value and broader customer-feedback coverage.
+The project is a recurring live Steam review pipeline. The goal is to collect many full text reviews per app from a public, structured source, then make the cumulative dataset available for downstream analysis through Postgres.
 
 The work should stay focused on live acquisition, not prepared/static datasets.
 
 ## Current Status
 
-- `docs/app_store_source_evaluation.md` documents the app-store source decision gate.
-- `data/targets/app_store_public_apps.csv` contains 20 mainstream public app targets across both Google Play and Apple App Store.
-- `data/evaluation/app_store_source_matrix.csv` compares official owner APIs, public storefront pages, and licensed-provider paths.
-- `app_store_evaluate.py` can summarize targets and run conservative no-login storefront smoke tests.
 - `data/targets/steam_apps.csv` seeds 20 high-volume Steam apps.
 - The pipeline fetches public review JSON from `store.steampowered.com/appreviews/{app_id}`.
 - Steam review pagination uses cursors with `num_per_page=100`.
@@ -22,7 +18,6 @@ The work should stay focused on live acquisition, not prepared/static datasets.
 - The scheduled workflow is `.github/workflows/steam-daily-pipeline.yml` on the local Mac self-hosted runner.
 - Routine cumulative data lives in local Postgres at `postgresql:///steam_reviews`.
 - CSV is no longer part of the daily workflow; exports are ad hoc.
-- The Steam workflow schedule has been reverted to a daily baseline while app-store source evaluation proceeds.
 
 ## Recent Evidence
 
@@ -51,9 +46,6 @@ A one-app Postgres smoke run for app `730` then completed successfully:
 
 ## Open Questions
 
-- Can public Google Play or Apple App Store storefronts expose enough full-review depth without hidden endpoints, login state, CAPTCHA solving, proxies, or brittle bypass behavior?
-- If public storefronts do not pass, which licensed provider has the best combination of review history, metadata, terms, API ergonomics, and cost?
-- Should v1 production source be licensed public app-store reviews, official owner APIs for partner apps, or another mainstream review source?
 - How many Steam pages per app should the normal scheduled run fetch after the first backfill?
 - How quickly does `filter=updated` refresh old `recommendationid` rows?
 - Should target discovery expand beyond the curated 20-app seed list?
@@ -86,19 +78,7 @@ The most important fields are:
 
 ## Evidence Needed For Source Viability
 
-For app-store source selection, collect evidence before writing production ingestion code:
-
-- public-third-party support,
-- full written review text availability,
-- stable review IDs or reliable deterministic dedupe keys,
-- rating, date, version, country/locale, and developer-response metadata,
-- pagination or batching behavior,
-- daily incremental refresh method,
-- expected historical depth for popular apps,
-- access terms, pricing, and operational risk,
-- fit with the existing Postgres cumulative-storage architecture.
-
-For Steam pipeline mechanics, collect evidence across at least one full backfill and one normal scheduled incremental run:
+Before expanding scope, collect evidence across at least one full backfill and one normal scheduled incremental run:
 
 - target app count,
 - fetched page count,
