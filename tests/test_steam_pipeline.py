@@ -322,7 +322,7 @@ def test_postgres_load_is_idempotent_tracks_changes_and_high_water(tmp_path):
                 "status": "fetched",
                 "status_code": 200,
                 "fetched_at": "2026-06-15T00:00:00+00:00",
-                "raw_json_path": str(payload_path),
+                "raw_json_path": "data/raw/steam/run-bigint/app_730_page_0001.json",
                 "response_bytes": 10,
                 "review_count": 1,
                 "total_reviews": 1,
@@ -373,6 +373,58 @@ def test_postgres_load_is_idempotent_tracks_changes_and_high_water(tmp_path):
     assert high_water == {"730": 2, "999": 0}
     assert sync_states["730"]["backlogged"] is False
     assert sync_states["999"]["backlogged"] is True
+
+
+def test_postgres_load_accepts_unsigned_steam_vote_counts(tmp_path):
+    database_url = postgres_url()
+    reset_postgres(database_url)
+    targets_path = tmp_path / "targets" / "steam_apps.csv"
+    write_targets(targets_path)
+    raw_dir = tmp_path / "raw" / "run-bigint"
+    raw_dir.mkdir(parents=True)
+    payload_path = raw_dir / "app_730_page_0001.json"
+    review = steam_review("31915198", "Steam can return unsigned-sized funny vote counts.", updated=1781704271)
+    review["votes_funny"] = 4_294_967_295
+    review["author"]["last_played"] = 1_781_718_823
+    write_json(payload_path, sanitize_payload_for_storage(steam_payload(cursor="", reviews=[review])))
+    write_jsonl(
+        raw_dir / "review_pages.jsonl",
+        [
+            {
+                "run_id": "run-bigint",
+                "app_id": "730",
+                "app_name": "Counter-Strike 2",
+                "page_number": 1,
+                "request_url": "https://store.steampowered.com/appreviews/730",
+                "cursor": "*",
+                "next_cursor": "",
+                "status": "fetched",
+                "status_code": 200,
+                "fetched_at": "2026-06-17T00:00:00+00:00",
+                "raw_json_path": str(payload_path),
+                "response_bytes": 10,
+                "review_count": 1,
+                "total_reviews": 4_294_967_295,
+                "total_positive": 4_294_967_295,
+                "total_negative": 0,
+                "max_timestamp_updated": 1_781_704_271,
+                "min_timestamp_updated": 1_781_704_271,
+                "attempt_count": 1,
+                "error_message": None,
+                "terminal_reason": "missing_next_cursor",
+            }
+        ],
+    )
+
+    summary = load_pipeline_run_postgres(database_url, raw_dir, targets_path)
+
+    assert summary["reviews_inserted"] == 1
+    with psycopg.connect(database_url) as connection:
+        row = connection.execute(
+            "SELECT votes_funny, total_reviews FROM steam_reviews JOIN steam_review_pages USING (run_id) WHERE recommendationid = %s",
+            ("31915198",),
+        ).fetchone()
+    assert row == (4_294_967_295, 4_294_967_295)
 
 
 def test_sync_state_does_not_advance_for_capped_app(tmp_path):

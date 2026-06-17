@@ -58,13 +58,13 @@ CREATE TABLE IF NOT EXISTS steam_review_pages (
     status_code INTEGER,
     fetched_at TEXT,
     raw_json_path TEXT,
-    response_bytes INTEGER NOT NULL DEFAULT 0,
+    response_bytes BIGINT NOT NULL DEFAULT 0,
     review_count INTEGER NOT NULL DEFAULT 0,
-    total_reviews INTEGER,
-    total_positive INTEGER,
-    total_negative INTEGER,
-    max_timestamp_updated INTEGER,
-    min_timestamp_updated INTEGER,
+    total_reviews BIGINT,
+    total_positive BIGINT,
+    total_negative BIGINT,
+    max_timestamp_updated BIGINT,
+    min_timestamp_updated BIGINT,
     attempt_count INTEGER NOT NULL DEFAULT 1,
     error_message TEXT,
     terminal_reason TEXT,
@@ -78,22 +78,22 @@ CREATE TABLE IF NOT EXISTS steam_reviews (
     language TEXT,
     review TEXT,
     voted_up INTEGER NOT NULL DEFAULT 0,
-    timestamp_created INTEGER,
-    timestamp_updated INTEGER,
+    timestamp_created BIGINT,
+    timestamp_updated BIGINT,
     created_at_iso TEXT,
     updated_at_iso TEXT,
-    votes_up INTEGER NOT NULL DEFAULT 0,
-    votes_funny INTEGER NOT NULL DEFAULT 0,
+    votes_up BIGINT NOT NULL DEFAULT 0,
+    votes_funny BIGINT NOT NULL DEFAULT 0,
     weighted_vote_score DOUBLE PRECISION,
-    comment_count INTEGER NOT NULL DEFAULT 0,
+    comment_count BIGINT NOT NULL DEFAULT 0,
     steam_purchase INTEGER NOT NULL DEFAULT 0,
     received_for_free INTEGER NOT NULL DEFAULT 0,
     written_during_early_access INTEGER NOT NULL DEFAULT 0,
     primarily_steam_deck INTEGER NOT NULL DEFAULT 0,
-    playtime_forever INTEGER,
-    playtime_last_two_weeks INTEGER,
-    playtime_at_review INTEGER,
-    last_played INTEGER,
+    playtime_forever BIGINT,
+    playtime_last_two_weeks BIGINT,
+    playtime_at_review BIGINT,
+    last_played BIGINT,
     collected_at TEXT,
     source_page_key TEXT REFERENCES steam_review_pages(page_key)
 );
@@ -104,8 +104,8 @@ CREATE TABLE IF NOT EXISTS steam_review_changes (
     recommendationid TEXT NOT NULL REFERENCES steam_reviews(recommendationid),
     app_id TEXT NOT NULL REFERENCES steam_apps(app_id),
     change_type TEXT NOT NULL CHECK (change_type IN ('inserted', 'updated')),
-    previous_timestamp_updated INTEGER,
-    new_timestamp_updated INTEGER,
+    previous_timestamp_updated BIGINT,
+    new_timestamp_updated BIGINT,
     source_page_key TEXT REFERENCES steam_review_pages(page_key),
     changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (run_id, recommendationid)
@@ -113,22 +113,50 @@ CREATE TABLE IF NOT EXISTS steam_review_changes (
 
 CREATE TABLE IF NOT EXISTS steam_app_sync_state (
     app_id TEXT PRIMARY KEY REFERENCES steam_apps(app_id),
-    complete_through_timestamp_updated INTEGER NOT NULL DEFAULT 0,
+    complete_through_timestamp_updated BIGINT NOT NULL DEFAULT 0,
     backlogged INTEGER NOT NULL DEFAULT 1,
     last_started_at TEXT,
     last_completed_at TEXT,
     last_run_id TEXT,
     last_successful_run_id TEXT,
     last_terminal_reason TEXT,
-    last_seen_max_timestamp_updated INTEGER,
-    last_seen_min_timestamp_updated INTEGER,
+    last_seen_max_timestamp_updated BIGINT,
+    last_seen_min_timestamp_updated BIGINT,
     last_page_count INTEGER NOT NULL DEFAULT 0,
     last_review_count INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE steam_review_pages ADD COLUMN IF NOT EXISTS max_timestamp_updated INTEGER;
-ALTER TABLE steam_review_pages ADD COLUMN IF NOT EXISTS min_timestamp_updated INTEGER;
+ALTER TABLE steam_review_pages ADD COLUMN IF NOT EXISTS max_timestamp_updated BIGINT;
+ALTER TABLE steam_review_pages ADD COLUMN IF NOT EXISTS min_timestamp_updated BIGINT;
+
+ALTER TABLE steam_review_pages
+    ALTER COLUMN response_bytes TYPE BIGINT,
+    ALTER COLUMN total_reviews TYPE BIGINT,
+    ALTER COLUMN total_positive TYPE BIGINT,
+    ALTER COLUMN total_negative TYPE BIGINT,
+    ALTER COLUMN max_timestamp_updated TYPE BIGINT,
+    ALTER COLUMN min_timestamp_updated TYPE BIGINT;
+
+ALTER TABLE steam_reviews
+    ALTER COLUMN timestamp_created TYPE BIGINT,
+    ALTER COLUMN timestamp_updated TYPE BIGINT,
+    ALTER COLUMN votes_up TYPE BIGINT,
+    ALTER COLUMN votes_funny TYPE BIGINT,
+    ALTER COLUMN comment_count TYPE BIGINT,
+    ALTER COLUMN playtime_forever TYPE BIGINT,
+    ALTER COLUMN playtime_last_two_weeks TYPE BIGINT,
+    ALTER COLUMN playtime_at_review TYPE BIGINT,
+    ALTER COLUMN last_played TYPE BIGINT;
+
+ALTER TABLE steam_review_changes
+    ALTER COLUMN previous_timestamp_updated TYPE BIGINT,
+    ALTER COLUMN new_timestamp_updated TYPE BIGINT;
+
+ALTER TABLE steam_app_sync_state
+    ALTER COLUMN complete_through_timestamp_updated TYPE BIGINT,
+    ALTER COLUMN last_seen_max_timestamp_updated TYPE BIGINT,
+    ALTER COLUMN last_seen_min_timestamp_updated TYPE BIGINT;
 
 CREATE INDEX IF NOT EXISTS idx_steam_reviews_app_id ON steam_reviews(app_id);
 CREATE INDEX IF NOT EXISTS idx_steam_reviews_run_id ON steam_reviews(run_id);
@@ -391,7 +419,7 @@ def load_pipeline_run_postgres(database_url: str, raw_dir: Path, targets_path: P
     run_id = raw_dir.name
     loaded_at = utc_now()
     apps_by_id = {app.app_id: app for app in load_targets(targets_path)} if targets_path and targets_path.exists() else {}
-    reviews = reviews_from_page_reports(page_reports)
+    reviews = reviews_from_page_reports(page_reports, raw_dir)
 
     with connect_postgres(database_url) as connection:
         connection.execute(POSTGRES_SCHEMA)

@@ -143,7 +143,7 @@ def load_pipeline_run(db_path: Path, raw_dir: Path, targets_path: Path | None = 
     run_id = raw_dir.name
     loaded_at = utc_now()
     apps_by_id = {app.app_id: app for app in load_targets(targets_path)} if targets_path and targets_path.exists() else {}
-    reviews = reviews_from_page_reports(page_reports)
+    reviews = reviews_from_page_reports(page_reports, raw_dir)
 
     with connect_database(db_path) as connection:
         initialize_database(connection)
@@ -167,7 +167,7 @@ def load_pipeline_run(db_path: Path, raw_dir: Path, targets_path: Path | None = 
     }
 
 
-def reviews_from_page_reports(page_reports: list[dict]) -> list[dict]:
+def reviews_from_page_reports(page_reports: list[dict], raw_dir: Path | None = None) -> list[dict]:
     reviews: list[dict] = []
     for page in page_reports:
         if page.get("status") not in {"fetched", "empty"}:
@@ -175,10 +175,16 @@ def reviews_from_page_reports(page_reports: list[dict]) -> list[dict]:
         raw_path = page.get("raw_json_path")
         if not raw_path:
             continue
-        payload = read_json(Path(raw_path))
+        payload = read_json(resolve_raw_json_path(Path(raw_path), raw_dir))
         for review in payload.get("reviews", []):
             reviews.append(normalize_review(review, page))
     return reviews
+
+
+def resolve_raw_json_path(raw_path: Path, raw_dir: Path | None = None) -> Path:
+    if raw_path.is_absolute() or raw_dir is None or raw_path.exists():
+        return raw_path
+    return raw_dir / raw_path.name
 
 
 def normalize_review(review: dict, page: dict) -> dict:
