@@ -2,7 +2,13 @@ name: Daily Steam Review Pipeline
 
 on:
   schedule:
-    - cron: "0 9 * * *"
+    # Temporary stability-test cadence: about every 5.5 hours.
+    # Revert to "0 9 * * *" after the short test window.
+    - cron: "50 1 * * *"
+    - cron: "20 7 * * *"
+    - cron: "50 12 * * *"
+    - cron: "20 18 * * *"
+    - cron: "20 20 * * *"
   workflow_dispatch:
     inputs:
       full_backfill:
